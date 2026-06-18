@@ -343,7 +343,7 @@ function renderCard(b){
   html+='<div class="booking-meta">';
   if(p.pax)html+='<span class="meta-chip chip-pax">&#128101; '+esc(p.pax)+' pax</span>';
   if(boat)html+='<span class="meta-chip chip-boat">&#9981; '+esc(boat)+'</span>';
-  if(skipper)html+='<span class="meta-chip chip-type">&#129510; '+esc(skipper)+'</span>';
+  if(skipper)html+='<span class="meta-chip chip-type">🧑‍✈️ '+esc(skipper)+'</span>';
   if(p.variant)html+='<span class="meta-chip chip-type">'+esc(p.variant)+'</span>';
   html+='</div>';
   html+='</div>';
@@ -444,8 +444,8 @@ async function saveNotes(sid,eventId){
       const variant=allBookings.find(b=>b.id===eventId)?.parsed?.variant||'';
       let chips='';
       if(pax)chips+='<span class="meta-chip chip-pax">&#128101; '+esc(pax)+' pax</span>';
-      if(fields.boat)chips+='<span class="meta-chip chip-boat">&#9981; '+esc(fields.boat)+'</span>';
-      if(fields.skipper)chips+='<span class="meta-chip chip-type">&#129510; '+esc(fields.skipper)+'</span>';
+      if(fields.boat)chips+='<span class="meta-chip chip-boat">⛵ '+esc(fields.boat)+'</span>';
+      if(fields.skipper)chips+='<span class="meta-chip chip-type">🧑‍✈️ '+esc(fields.skipper)+'</span>';
       if(variant)chips+='<span class="meta-chip chip-type">'+esc(variant)+'</span>';
       meta.innerHTML=chips;
     }
