@@ -426,7 +426,7 @@ async function saveNotes(sid,eventId){
     food:document.getElementById('n-food-'+sid)?.value||'',
     boat:document.getElementById('n-boat-'+sid)?.value||'',
     skipper:document.getElementById('n-skipper-'+sid)?.value||'',
-    balance:document.getElementById('n-balance-'+sid)?.value||'',
+    balance:document.getElementById('n-balance-'+sid)?.value||null,
     extras:document.getElementById('n-extras-'+sid)?.value||'',
     contacted:document.getElementById('n-contacted-'+sid)?.value||'',
     comment:document.getElementById('n-comment-'+sid)?.value||'',
@@ -482,7 +482,7 @@ function showExport(){
     text+=boat+' '+time+' --> '+pax+'pax.';
     if(food)text+=' '+food+'.';
     text+=' '+balance;
-    text+=' '+flag+' '+skipper+' + '+buyer;
+    text+=' '+flag+' '+skipper;
     text+='\n';
   }
 
