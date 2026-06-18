@@ -444,7 +444,7 @@ async function saveNotes(sid,eventId){
       const variant=allBookings.find(b=>b.id===eventId)?.parsed?.variant||'';
       let chips='';
       if(pax)chips+='<span class="meta-chip chip-pax">&#128101; '+esc(pax)+' pax</span>';
-      if(fields.boat)chips+='<span class="meta-chip chip-boat">⛵ '+esc(fields.boat)+'</span>';
+      if(fields.boat)chips+='<span class="meta-chip chip-boat">🚢 '+esc(fields.boat)+'</span>';
       if(fields.skipper)chips+='<span class="meta-chip chip-type">🧑‍✈️ '+esc(fields.skipper)+'</span>';
       if(variant)chips+='<span class="meta-chip chip-type">'+esc(variant)+'</span>';
       meta.innerHTML=chips;
