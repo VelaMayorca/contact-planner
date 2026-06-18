@@ -147,7 +147,7 @@ const _f='sjnpy.supabase.co';
 const _g='sb_publishable_V3ZCmMWZwGCve5Os3AO6bA';
 const _h='_A_-hQJMb';
 const CLIENT_ID=_a+_b, CLIENT_SECRET=_c+_d, SUPABASE_URL=_e+_f, SUPABASE_KEY=_g+_h;
-const CALENDAR_NAME='SARAH', ADMIN_KEY='vela-admin-2024';
+const CALENDAR_NAMES=['SARAH','BTP'], ADMIN_KEY='vela-admin-2024';
 
 const BOATS=['Servus','Gambitero','Trui','Jaleo','RunWild'];
 const SKIPPERS=['Edu','Alberto','Silvio','Jaume','Gustavo','Leandro','Otro...'];
@@ -205,8 +205,8 @@ function logout(){clearToken();localStorage.removeItem('vt_admin');showLogin();}
 async function getCalendarId(){
   const r=await fetch('https://www.googleapis.com/calendar/v3/users/me/calendarList',{headers:{Authorization:'Bearer '+accessToken}});
   const d=await r.json();if(d.error)throw new Error(d.error.message);
-  const cal=(d.items||[]).find(c=>c.summary?.toUpperCase().includes(CALENDAR_NAME)||c.summaryOverride?.toUpperCase().includes(CALENDAR_NAME));
-  return cal?cal.id:'primary';
+  const cals=(d.items||[]).filter(c=>CALENDAR_NAMES.some(n=>c.summary?.toUpperCase().includes(n)||c.summaryOverride?.toUpperCase().includes(n))); 
+  return cals.map(c=>c.id);
 }
 async function fetchGoogleEvents(calId,tMin,tMax){
   const p=new URLSearchParams({timeMin:tMin.toISOString(),timeMax:tMax.toISOString(),singleEvents:'true',orderBy:'startTime',maxResults:'100'});
@@ -221,8 +221,8 @@ async function syncCalendar(){
     const tom=new Date();tom.setDate(tom.getDate()+1);
     const tStart=new Date(tom);tStart.setHours(0,0,0,0);
     const wEnd=new Date(tStart);wEnd.setDate(tStart.getDate()+6);wEnd.setHours(23,59,59,999);
-    const events=await fetchGoogleEvents(calId,tStart,wEnd);
-    const bookings=events.map(parseEvent);
+    const allEvents=await Promise.all(calId.map(id=>fetchGoogleEvents(id,tStart,wEnd)));
+    const events=allEvents.flat();    const bookings=events.map(parseEvent);
     await saveEventsToSupabase(bookings);
     await loadFromSupabase();
   }catch(err){showError('Error sync: '+err.message);}
