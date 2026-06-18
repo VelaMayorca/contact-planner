@@ -45,19 +45,24 @@
   .day-count{font-size:0.72rem;font-weight:700;background:var(--teal);color:#fff;border-radius:12px;padding:2px 8px;}
   .booking-card{background:var(--white);border:1.5px solid var(--border);border-radius:14px;margin-bottom:14px;overflow:hidden;box-shadow:0 2px 12px rgba(10,33,64,0.07);transition:border-color 0.2s;}
   .booking-card:hover{border-color:var(--blue);}
-  .card-top{padding:16px 20px;display:flex;align-items:flex-start;gap:14px;cursor:pointer;}
-  .time-col{flex-shrink:0;text-align:center;min-width:52px;}
+  .card-top{padding:16px 20px;display:flex;align-items:flex-start;gap:14px;}
+  .time-col{flex-shrink:0;text-align:center;min-width:52px;cursor:pointer;}
   .time-big{font-family:'DM Serif Display',serif;font-size:1.3rem;color:var(--blue);line-height:1;}
   .time-end{font-size:0.7rem;color:var(--muted);margin-top:2px;}
   .divider-v{width:1px;background:var(--border);align-self:stretch;flex-shrink:0;}
-  .info-col{flex:1;min-width:0;}
-  .booking-title{font-weight:700;font-size:1rem;color:var(--text);margin-bottom:6px;}
-  .booking-buyer{font-size:0.88rem;color:var(--mid);font-weight:600;margin-bottom:4px;}
+  .info-col{flex:1;min-width:0;cursor:pointer;}
+  .booking-title{font-weight:700;font-size:1rem;color:var(--text);margin-bottom:4px;}
+  .booking-buyer{font-size:0.88rem;color:var(--mid);font-weight:600;margin-bottom:3px;}
   .booking-email{font-size:0.78rem;color:var(--muted);margin-bottom:6px;}
-  .booking-meta{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;}
+  .booking-meta{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;align-items:center;}
   .meta-chip{font-size:0.74rem;font-weight:600;padding:3px 8px;border-radius:6px;display:flex;align-items:center;gap:4px;}
   .chip-pax{background:#e8f4fd;color:var(--blue);}.chip-type{background:#f0faf9;color:#1a8a7a;}
-  .phone-display{font-family:'DM Serif Display',serif;font-size:1.1rem;color:var(--mid);letter-spacing:0.03em;}
+  .chip-boat{background:#fff3e0;color:#e65100;font-weight:700;}
+  /* Phone editable */
+  .phone-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:4px;}
+  .phone-input{font-family:'DM Serif Display',serif;font-size:1.05rem;color:var(--mid);letter-spacing:0.03em;border:none;outline:none;background:transparent;width:200px;cursor:text;}
+  .phone-input:focus{border-bottom:2px solid var(--blue);background:#f0f8ff;border-radius:4px 4px 0 0;padding:2px 4px;}
+  .btn-phone-save{display:none;background:var(--success);color:#fff;border:none;border-radius:6px;padding:3px 8px;font-size:0.72rem;font-weight:600;cursor:pointer;}
   .prefix-hint{font-size:0.74rem;color:var(--warn);display:block;margin-top:2px;}
   .status-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;margin-top:4px;}
   .dot-pending{background:var(--warn);}.dot-done{background:var(--success);}.dot-none{background:var(--border);}
@@ -66,6 +71,7 @@
   .btn-sm:active{transform:scale(0.95);}
   .btn-copy{background:var(--border);color:var(--text);}.btn-copy.done{background:var(--success);color:#fff;}
   .btn-wa{background:#25d366;color:#fff;font-weight:700;}.btn-notes{background:var(--sand);border:1.5px solid var(--border);color:var(--muted);}
+  .btn-export{background:var(--deep);color:#fff;}
   .notes-panel{border-top:1.5px solid var(--border);padding:16px 20px;background:#fafcff;display:none;}
   .notes-panel.open{display:block;}
   .notes-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;}
@@ -78,7 +84,13 @@
   .save-status{font-size:0.75rem;color:var(--muted);}
   .btn-save{background:var(--blue);color:#fff;border:none;border-radius:8px;padding:8px 16px;font-family:'Inter',sans-serif;font-size:0.82rem;font-weight:600;cursor:pointer;}
   .btn-save.saved{background:var(--success);}
-  @media print{header,.tabs,.btn-wa,.btn-copy,.btn-notes,.notes-footer,.btn,.admin-bar{display:none!important;}.notes-panel{display:block!important;}body{background:white;}.booking-card{box-shadow:none;border:1px solid #ccc;page-break-inside:avoid;}}
+  /* Export modal */
+  .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:200;display:flex;align-items:center;justify-content:center;padding:20px;}
+  .modal{background:var(--white);border-radius:16px;padding:28px;max-width:600px;width:100%;max-height:80vh;overflow-y:auto;box-shadow:0 8px 40px rgba(0,0,0,0.3);}
+  .modal h2{font-family:'DM Serif Display',serif;font-size:1.3rem;margin-bottom:16px;color:var(--text);}
+  .export-text{background:#1a1a2e;color:#e0e0e0;font-family:monospace;font-size:0.88rem;padding:16px;border-radius:10px;white-space:pre-wrap;line-height:1.7;margin-bottom:16px;}
+  .modal-actions{display:flex;gap:10px;justify-content:flex-end;}
+  @media print{header,.tabs,.btn-wa,.btn-copy,.btn-notes,.notes-footer,.btn,.admin-bar,.card-actions{display:none!important;}.notes-panel{display:block!important;}body{background:white;}.booking-card{box-shadow:none;border:1px solid #ccc;page-break-inside:avoid;}}
 </style>
 </head>
 <body>
@@ -112,6 +124,19 @@
     <div id="view-planning" style="display:none"></div>
   </div>
 </main>
+
+<!-- Export Modal -->
+<div class="modal-overlay" id="exportModal" style="display:none" onclick="if(event.target===this)closeExport()">
+  <div class="modal">
+    <h2>&#128203; Resumen del dia</h2>
+    <div class="export-text" id="exportText"></div>
+    <div class="modal-actions">
+      <button class="btn btn-blue" onclick="copyExport()">&#128203; Copiar</button>
+      <button class="btn" style="background:var(--border);color:var(--text)" onclick="closeExport()">Cerrar</button>
+    </div>
+  </div>
+</div>
+
 <script>
 const _a='472909472248-mkbdkopci5p8guo7eo3agl5a9v1mid';
 const _b='ua.apps.googleusercontent.com';
@@ -123,6 +148,9 @@ const _g='sb_publishable_V3ZCmMWZwGCve5Os3AO6bA';
 const _h='_A_-hQJMb';
 const CLIENT_ID=_a+_b, CLIENT_SECRET=_c+_d, SUPABASE_URL=_e+_f, SUPABASE_KEY=_g+_h;
 const CALENDAR_NAME='SARAH', ADMIN_KEY='vela-admin-2024';
+
+const BOATS=['Servus','Gambitero','Trui','Jaleo','RunWild'];
+const SKIPPERS=['Edu','Alberto','Silvio','Jaume','Gustavo','Leandro','Otro...'];
 
 const urlParams=new URLSearchParams(window.location.search);
 const isAdmin=urlParams.get('admin')===ADMIN_KEY||localStorage.getItem('vt_admin')===ADMIN_KEY;
@@ -148,6 +176,7 @@ async function loadEventsFromSupabase(){
   return(data||[]).map(r=>({id:r.id,title:r.title,start:r.start_time,end:r.end_time,date:r.date,parsed:{buyer:r.buyer||'',phone:r.phone||'',email:r.email||'',pax:r.pax||'',variant:r.variant||''}}));
 }
 
+// ── Auth ──────────────────────────────────────────────────────────────────────
 let accessToken=null,tokenExpiry=0;
 function getRedirectUri(){return window.location.href.split('?')[0].split('#')[0];}
 function saveToken(t,exp){accessToken=t;tokenExpiry=Date.now()+(exp-60)*1000;try{sessionStorage.setItem('vt_token',t);sessionStorage.setItem('vt_expiry',tokenExpiry);}catch(e){}}
@@ -172,6 +201,7 @@ async function handleCallback(code){
 }
 function logout(){clearToken();localStorage.removeItem('vt_admin');showLogin();}
 
+// ── Calendar ──────────────────────────────────────────────────────────────────
 async function getCalendarId(){
   const r=await fetch('https://www.googleapis.com/calendar/v3/users/me/calendarList',{headers:{Authorization:'Bearer '+accessToken}});
   const d=await r.json();if(d.error)throw new Error(d.error.message);
@@ -198,7 +228,6 @@ async function syncCalendar(){
   }catch(err){showError('Error sync: '+err.message);}
   btn.disabled=false;btn.innerHTML='&#8645; Sincronizar';
 }
-
 async function loadFromSupabase(){
   const btn=document.getElementById('btnRefresh');if(btn){btn.disabled=true;btn.innerHTML='&#8635; Cargando...';}
   showLoading('Cargando reservas...');
@@ -207,51 +236,26 @@ async function loadFromSupabase(){
     allNotes=notesMap;allBookings=events;
     const tom=new Date();tom.setDate(tom.getDate()+1);
     const tStr=toDateStr(tom);
-    renderView(allBookings.filter(b=>b.date===tStr),'view-tomorrow');
-    renderView(allBookings,'view-week');
-    renderView(allBookings,'view-planning');
-    if(!events.length){
-      ['tomorrow','week','planning'].forEach(v=>{
-        document.getElementById('view-'+v).innerHTML='<div class="state-screen"><div class="icon">&#127754;</div><h2>Sin reservas</h2><p>'+(isAdmin?'Pulsa <strong>Sincronizar</strong> para cargar el calendario.':'El administrador aun no ha sincronizado el calendario.')+'</p></div>';
-      });
-    }
+    renderView(allBookings.filter(b=>b.date===tStr),'view-tomorrow',true);
+    renderView(allBookings,'view-week',false);
+    renderView(allBookings,'view-planning',false);
+    if(!events.length){['tomorrow','week','planning'].forEach(v=>{document.getElementById('view-'+v).innerHTML='<div class="state-screen"><div class="icon">&#127754;</div><h2>Sin reservas</h2><p>'+(isAdmin?'Pulsa <strong>Sincronizar</strong> para cargar el calendario.':'El administrador aun no ha sincronizado.')+'</p></div>';});}
   }catch(err){showError('Error: '+err.message);}
   if(btn){btn.disabled=false;btn.innerHTML='&#8635; Actualizar';}
 }
 
-// ── Parser mejorado ───────────────────────────────────────────────────────────
+// ── Parser ────────────────────────────────────────────────────────────────────
 function parseEvent(ev){
-  // Strip HTML and normalize spaces
   const raw=ev.description||'';
   const desc=raw.replace(/<br\s*\/?>/gi,' ').replace(/<[^>]+>/g,' ').replace(/&nbsp;/g,' ').replace(/\s+/g,' ').trim();
-
-  // Flexible regex: handle missing space before field names
   const get=re=>{const m=desc.match(re);return m?(m[1]||'').trim():'';};
-
-  // Buyer: everything between "Buyer:" and next known field or end
-  const buyer = get(/Buyer:\s*(.+?)(?=Customer Phone:|Customer Email:|$)/i);
-
-  // Phone: after "Customer Phone:" or "Phone:" — grab until space+Capital or end
-  const phone = get(/Customer Phone:\s*(\S+)/i) || get(/Phone:\s*(\S+)/i);
-
-  // Email: after "Customer Email:" or "Email:" — grab until space or end
-  const email = (get(/Customer Email:\s*(\S+)/i) || get(/Email:\s*(\S+)/i)).replace(/[<>[\]]/g,'');
-
-  // Pax
-  const pax = get(/N[uú]mero de participantes:\s*(\d+)/i) || get(/participants?:\s*(\d+)/i) || get(/(\d+)\s*pax/i);
-
-  // Variant
-  const variant = get(/Variation Name:\s*(.+?)(?=Buyer:|Customer|$)/i);
-
+  const buyer=get(/Buyer:\s*(.+?)(?=Customer Phone:|Customer Email:|$)/i);
+  const phone=(get(/Customer Phone:\s*(\S+)/i)||get(/Phone:\s*(\S+)/i)).replace(/[<>]/g,'');
+  const email=(get(/Customer Email:\s*(\S+)/i)||get(/Email:\s*(\S+)/i)).replace(/[<>[\]]/g,'');
+  const pax=get(/N[uú]mero de participantes:\s*(\d+)/i)||get(/participants?:\s*(\d+)/i)||get(/(\d+)\s*pax/i);
+  const variant=get(/Variation Name:\s*(.+?)(?=Buyer:|Customer|$)/i);
   const start=ev.start?.dateTime||ev.start?.date||'';
-  return{
-    id:ev.id,
-    title:ev.summary||'Sin titulo',
-    start,
-    end:ev.end?.dateTime||ev.end?.date||'',
-    date:start.split('T')[0],
-    parsed:{buyer,phone,email,pax,variant}
-  };
+  return{id:ev.id,title:ev.summary||'Sin titulo',start,end:ev.end?.dateTime||ev.end?.date||'',date:start.split('T')[0],parsed:{buyer,phone,email,pax,variant}};
 }
 
 // ── Prefix ────────────────────────────────────────────────────────────────────
@@ -274,6 +278,14 @@ function guessPrefix(phone){
     s*=(BOOST[e.cc]||1);if(s>bestS){bestS=s;best=e;}}
   return best;
 }
+function getFlag(phone){
+  if(!phone)return '';
+  const n=phone.replace(/[\s\-(). ]/g,'');
+  if(n.startsWith('+')){
+    for(const len of[3,2,1]){const cc='+'+n.slice(1,1+len);const e=CDB.find(x=>x.cc===cc);if(e)return e.flag;}
+  }
+  const g=guessPrefix(phone);return g?g.flag:'';
+}
 function buildWa(phone){
   let n=phone.replace(/[\s\-(). ]/g,'');
   if(n.startsWith('00'))n='+'+n.slice(2);
@@ -281,23 +293,24 @@ function buildWa(phone){
   else n=n.slice(1);return n;
 }
 
+// ── State ─────────────────────────────────────────────────────────────────────
 let allBookings=[],allNotes={};
 function toDateStr(d){return d.toISOString().split('T')[0];}
 function formatTime(iso){if(!iso||!iso.includes('T'))return'--';try{return new Date(iso).toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'});}catch(e){return'--';}}
 function formatDateLabel(ds){try{const d=new Date(ds+'T12:00:00');return{weekday:d.toLocaleDateString('es-ES',{weekday:'long'}),rest:d.toLocaleDateString('es-ES',{day:'numeric',month:'long'})};}catch(e){return{weekday:'',rest:ds};}}
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 
-function renderView(bookings,cid){
+// ── Render ────────────────────────────────────────────────────────────────────
+function renderView(bookings,cid,isTomorrow){
   const el=document.getElementById(cid);
   if(!bookings.length){el.innerHTML='<div class="state-screen"><div class="icon">&#127754;</div><h2>Sin reservas</h2><p>No hay tours para este periodo.</p></div>';return;}
   const byDate={};for(const b of bookings){if(!byDate[b.date])byDate[b.date]=[];byDate[b.date].push(b);}
   const totalPax=bookings.reduce((s,b)=>s+(parseInt(b.parsed.pax)||0),0);
   const contacted=bookings.filter(b=>allNotes[b.id]?.contacted==='si').length;
   let adminBar='';
-  if(isAdmin&&cid==='view-tomorrow'){
-    adminBar='<div class="admin-bar"><span>&#128274; Modo <strong>Admin</strong></span><button class="btn btn-teal" onclick="syncCalendar()" style="padding:6px 12px;font-size:0.78rem">&#8645; Sincronizar ahora</button></div>';
-  }
-  let html=adminBar+'<div class="top-bar"><div class="summary-bar"><div class="sum-item"><div class="sum-num">'+bookings.length+'</div><div class="sum-label">Reservas</div></div><div class="sum-item"><div class="sum-num">'+(totalPax||'--')+'</div><div class="sum-label">Personas</div></div><div class="sum-item"><div class="sum-num">'+contacted+'/'+bookings.length+'</div><div class="sum-label">Contactados</div></div></div><button class="btn btn-deep" onclick="window.print()">Imprimir</button></div>';
+  if(isAdmin&&isTomorrow){adminBar='<div class="admin-bar"><span>&#128274; Modo <strong>Admin</strong></span><button class="btn btn-teal" onclick="syncCalendar()" style="padding:6px 12px;font-size:0.78rem">&#8645; Sincronizar ahora</button></div>';}
+  let exportBtn=isTomorrow?'<button class="btn btn-export" onclick="showExport()">&#128203; Exportar resumen</button>':'';
+  let html=adminBar+'<div class="top-bar"><div class="summary-bar"><div class="sum-item"><div class="sum-num">'+bookings.length+'</div><div class="sum-label">Reservas</div></div><div class="sum-item"><div class="sum-num">'+(totalPax||'--')+'</div><div class="sum-label">Personas</div></div><div class="sum-item"><div class="sum-num">'+contacted+'/'+bookings.length+'</div><div class="sum-label">Contactados</div></div></div><div style="display:flex;gap:8px">'+exportBtn+'<button class="btn btn-deep" onclick="window.print()">Imprimir</button></div></div>';
   for(const[date,dayB]of Object.entries(byDate)){
     const{weekday,rest}=formatDateLabel(date);
     const dayPax=dayB.reduce((s,b)=>s+(parseInt(b.parsed.pax)||0),0);
@@ -310,85 +323,181 @@ function renderView(bookings,cid){
 
 function renderCard(b){
   const p=b.parsed,n=allNotes[b.id]||{};
-  const phone=p.phone||'';
+  const phone=n.phone||p.phone||'';
   const needsP=phone&&!hasPrefix(phone);
   const guess=needsP?guessPrefix(phone):null;
   const waNum=phone?buildWa(phone):'';
+  const flag=getFlag(phone);
   const dotC=n.contacted==='si'?'dot-done':(phone?'dot-pending':'dot-none');
   const sid=esc(b.id);
+  const boat=n.boat||'';
+  const skipper=n.skipper||'';
 
-  let html='<div class="booking-card" id="card-'+sid+'"><div class="card-top" onclick="toggleNotes(\''+sid+'\')">';
-  html+='<div class="time-col"><div class="time-big">'+formatTime(b.start)+'</div><div class="time-end">'+formatTime(b.end)+'</div></div>';
+  let html='<div class="booking-card" id="card-'+sid+'"><div class="card-top">';
+  html+='<div class="time-col" onclick="toggleNotes(\''+sid+'\')"><div class="time-big">'+formatTime(b.start)+'</div><div class="time-end">'+formatTime(b.end)+'</div></div>';
   html+='<div class="divider-v"></div>';
-  html+='<div class="info-col">';
-  // Titulo del evento
+  html+='<div class="info-col" onclick="toggleNotes(\''+sid+'\')">';
   html+='<div class="booking-title">'+esc(b.title)+'</div>';
-  // Nombre del cliente
   if(p.buyer)html+='<div class="booking-buyer">&#129489; '+esc(p.buyer)+'</div>';
-  // Email
   if(p.email)html+='<div class="booking-email">&#9993; '+esc(p.email)+'</div>';
-  // Chips: pax y tipo
   html+='<div class="booking-meta">';
   if(p.pax)html+='<span class="meta-chip chip-pax">&#128101; '+esc(p.pax)+' pax</span>';
-  if(p.variant)html+='<span class="meta-chip chip-type">&#9975; '+esc(p.variant)+'</span>';
+  if(boat)html+='<span class="meta-chip chip-boat">&#9981; '+esc(boat)+'</span>';
+  if(skipper)html+='<span class="meta-chip chip-type">&#129510; '+esc(skipper)+'</span>';
+  if(p.variant)html+='<span class="meta-chip chip-type">'+esc(p.variant)+'</span>';
   html+='</div>';
-  // Telefono
-  if(phone){
-    html+='<div class="phone-display">'+esc(phone)+'</div>';
-    if(needsP&&guess)html+='<span class="prefix-hint">&#9888; Sin prefijo &middot; sugerido '+esc(guess.flag)+' '+esc(guess.cc)+'</span>';
-  }else{
-    html+='<div style="color:var(--muted);font-size:0.82rem;margin-top:4px">Sin telefono</div>';
-  }
   html+='</div>';
   html+='<div class="status-dot '+dotC+'" id="dot-'+sid+'"></div>';
   html+='</div>'; // card-top
+
+  // Phone row (outside card-top, not clickable for notes)
+  html+='<div style="padding:0 20px 10px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">';
+  if(flag)html+='<span style="font-size:1.1rem">'+flag+'</span>';
+  html+='<input class="phone-input" id="phone-'+sid+'" value="'+esc(phone)+'" placeholder="Sin telefono" oninput="onPhoneInput(\''+sid+'\')" onblur="onPhoneBlur(\''+sid+'\')" onclick="event.stopPropagation()"/>';
+  html+='<button class="btn-phone-save" id="phonesave-'+sid+'" onclick="savePhone(\''+sid+'\',\''+esc(b.id)+'\')">Guardar</button>';
+  if(needsP&&guess)html+='<span class="prefix-hint">&#9888; sin prefijo - sugerido '+esc(guess.flag)+' '+esc(guess.cc)+'</span>';
+  html+='</div>';
 
   // Actions
   html+='<div class="card-actions">';
   if(phone){
     html+='<button class="btn-sm btn-copy" onclick="copyText(\''+esc(phone)+'\',this)">&#128203; Copiar</button>';
-    html+='<a href="https://wa.me/'+waNum+'?text=Hola%20'+esc(p.buyer ? encodeURIComponent(p.buyer.split(' ')[0]) : '')+'%2C%20le%20escribimos%20desde%20Vela%20Tours%20para%20confirmar%20su%20reserva." target="_blank"><button class="btn-sm btn-wa">&#128172; WhatsApp</button></a>';
+    html+='<a href="https://wa.me/'+waNum+'" target="_blank"><button class="btn-sm btn-wa">&#128172; WhatsApp</button></a>';
   }
   html+='<button class="btn-sm btn-notes" onclick="toggleNotes(\''+sid+'\')">&#128221; '+(allNotes[b.id]?'Ver notas':'Notas')+'</button>';
   html+='</div>';
 
   // Notes panel
+  const boatOptions=BOATS.map(bt=>'<option value="'+bt+'" '+(n.boat===bt?'selected':'')+'>'+bt+'</option>').join('');
+  const skipperOptions=SKIPPERS.map(sk=>'<option value="'+sk+'" '+(n.skipper===sk?'selected':'')+'>'+sk+'</option>').join('');
+
   html+='<div class="notes-panel '+(allNotes[b.id]?'open':'')+'" id="notes-'+sid+'">';
   html+='<div class="notes-grid">';
   html+='<div class="note-field"><label>Personas confirmadas</label><input type="number" min="1" max="50" placeholder="'+esc(p.pax||'')+'" value="'+esc(n.pax||'')+'" id="n-pax-'+sid+'"/></div>';
   html+='<div class="note-field"><label>Comida</label><select id="n-food-'+sid+'"><option value="" '+((!n.food)?'selected':'')+'>-- Sin confirmar --</option><option value="si" '+((n.food==='si')?'selected':'')+'>Si quieren</option><option value="no" '+((n.food==='no')?'selected':'')+'>No quieren</option><option value="pendiente" '+((n.food==='pendiente')?'selected':'')+'>Pendiente</option></select></div>';
-  html+='<div class="note-field"><label>Barco</label><input type="text" placeholder="Nombre del barco" value="'+esc(n.boat||'')+'" id="n-boat-'+sid+'"/></div>';
-  html+='<div class="note-field"><label>Patron</label><input type="text" placeholder="Nombre del patron" value="'+esc(n.skipper||'')+'" id="n-skipper-'+sid+'"/></div>';
+  html+='<div class="note-field"><label>Barco</label><select id="n-boat-'+sid+'"><option value="">-- Seleccionar --</option>'+boatOptions+'</select></div>';
+  html+='<div class="note-field"><label>Patron</label><select id="n-skipper-'+sid+'"><option value="">-- Seleccionar --</option>'+skipperOptions+'</select></div>';
+  html+='<div class="note-field"><label>Balance (EUR)</label><input type="number" min="0" step="0.01" placeholder="0.00" value="'+esc(n.balance||'')+'" id="n-balance-'+sid+'"/></div>';
   html+='<div class="note-field"><label>Extras</label><input type="text" placeholder="Snorkel, kayak, bebidas..." value="'+esc(n.extras||'')+'" id="n-extras-'+sid+'"/></div>';
   html+='<div class="note-field"><label>Contactado</label><select id="n-contacted-'+sid+'"><option value="" '+((!n.contacted)?'selected':'')+'>-- Pendiente --</option><option value="si" '+((n.contacted==='si')?'selected':'')+'>Si, contactado</option><option value="no_responde" '+((n.contacted==='no_responde')?'selected':'')+'>No responde</option></select></div>';
-  html+='<div class="note-field" style="grid-column:1/-1"><label>Peticiones especiales</label><textarea placeholder="Alergias, cumpleanos, accesibilidad..." id="n-comment-'+sid+'">'+esc(n.comment||'')+'</textarea></div>';
+  html+='<div class="note-field" style="grid-column:1/-1"><label>Peticiones especiales / Comida</label><textarea placeholder="Tapas, Paella, alergias..." id="n-comment-'+sid+'">'+esc(n.comment||'')+'</textarea></div>';
   html+='</div>';
-  html+='<div class="notes-footer"><span class="save-status" id="status-'+sid+'"></span><button class="btn-save" id="save-'+sid+'" onclick="saveNotes(\''+sid+'\')">Guardar notas</button></div>';
+  html+='<div class="notes-footer"><span class="save-status" id="status-'+sid+'"></span><button class="btn-save" id="save-'+sid+'" onclick="saveNotes(\''+sid+'\',\''+esc(b.id)+'\')">Guardar notas</button></div>';
   html+='</div></div>';
   return html;
 }
 
+// ── Phone editing ─────────────────────────────────────────────────────────────
+function onPhoneInput(sid){
+  const btn=document.getElementById('phonesave-'+sid);
+  if(btn)btn.style.display='inline-flex';
+}
+function onPhoneBlur(sid){
+  // Hide save btn after short delay (to allow click)
+  setTimeout(()=>{
+    const inp=document.getElementById('phone-'+sid);
+    const btn=document.getElementById('phonesave-'+sid);
+    // Only hide if not focused
+    if(document.activeElement!==btn&&btn)btn.style.display='none';
+  },200);
+}
+async function savePhone(sid,eventId){
+  const inp=document.getElementById('phone-'+sid);
+  const btn=document.getElementById('phonesave-'+sid);
+  if(!inp)return;
+  const newPhone=inp.value.trim();
+  btn.textContent='...';
+  try{
+    await upsertNote(eventId,{...(allNotes[eventId]||{}),phone:newPhone});
+    if(!allNotes[eventId])allNotes[eventId]={};
+    allNotes[eventId].phone=newPhone;
+    btn.textContent='OK';btn.style.background='var(--success)';
+    setTimeout(()=>{btn.style.display='none';btn.textContent='Guardar';btn.style.background='';},1500);
+  }catch(err){btn.textContent='Error';setTimeout(()=>{btn.style.display='none';btn.textContent='Guardar';},2000);}
+}
+
 function toggleNotes(id){document.getElementById('notes-'+id)?.classList.toggle('open');}
-async function saveNotes(id){
-  const btn=document.getElementById('save-'+id),st=document.getElementById('status-'+id);
+
+async function saveNotes(sid,eventId){
+  const btn=document.getElementById('save-'+sid),st=document.getElementById('status-'+sid);
   btn.disabled=true;btn.textContent='Guardando...';if(st)st.textContent='';
   const fields={
-    pax:document.getElementById('n-pax-'+id)?.value||'',
-    food:document.getElementById('n-food-'+id)?.value||'',
-    boat:document.getElementById('n-boat-'+id)?.value||'',
-    skipper:document.getElementById('n-skipper-'+id)?.value||'',
-    extras:document.getElementById('n-extras-'+id)?.value||'',
-    contacted:document.getElementById('n-contacted-'+id)?.value||'',
-    comment:document.getElementById('n-comment-'+id)?.value||''
+    pax:document.getElementById('n-pax-'+sid)?.value||'',
+    food:document.getElementById('n-food-'+sid)?.value||'',
+    boat:document.getElementById('n-boat-'+sid)?.value||'',
+    skipper:document.getElementById('n-skipper-'+sid)?.value||'',
+    balance:document.getElementById('n-balance-'+sid)?.value||'',
+    extras:document.getElementById('n-extras-'+sid)?.value||'',
+    contacted:document.getElementById('n-contacted-'+sid)?.value||'',
+    comment:document.getElementById('n-comment-'+sid)?.value||'',
+    phone:allNotes[eventId]?.phone||''
   };
   try{
-    await upsertNote(id,fields);allNotes[id]={...fields,event_id:id};
-    btn.textContent='Guardado';btn.classList.add('saved');if(st)st.textContent='Sincronizado &#9729;';
+    await upsertNote(eventId,fields);allNotes[eventId]={...fields,event_id:eventId};
+    btn.textContent='Guardado';btn.classList.add('saved');if(st)st.textContent='Sincronizado';
     setTimeout(()=>{btn.textContent='Guardar notas';btn.classList.remove('saved');btn.disabled=false;if(st)st.textContent='';},2500);
-    const dot=document.getElementById('dot-'+id);if(dot)dot.className='status-dot '+(fields.contacted==='si'?'dot-done':'dot-pending');
+    const dot=document.getElementById('dot-'+sid);if(dot)dot.className='status-dot '+(fields.contacted==='si'?'dot-done':'dot-pending');
+    // Update boat/skipper chips in card header
+    const meta=document.querySelector('#card-'+sid+' .booking-meta');
+    if(meta){
+      const pax=allBookings.find(b=>b.id===eventId)?.parsed?.pax||'';
+      const variant=allBookings.find(b=>b.id===eventId)?.parsed?.variant||'';
+      let chips='';
+      if(pax)chips+='<span class="meta-chip chip-pax">&#128101; '+esc(pax)+' pax</span>';
+      if(fields.boat)chips+='<span class="meta-chip chip-boat">&#9981; '+esc(fields.boat)+'</span>';
+      if(fields.skipper)chips+='<span class="meta-chip chip-type">&#129510; '+esc(fields.skipper)+'</span>';
+      if(variant)chips+='<span class="meta-chip chip-type">'+esc(variant)+'</span>';
+      meta.innerHTML=chips;
+    }
   }catch(err){btn.textContent='Error';btn.disabled=false;if(st)st.textContent='Error: '+err.message;}
 }
+
 function copyText(text,btn){navigator.clipboard.writeText(text).then(()=>{btn.textContent='Copiado';btn.classList.add('done');setTimeout(()=>{btn.textContent='Copiar';btn.classList.remove('done');},2000);});}
+
+// ── Export ────────────────────────────────────────────────────────────────────
+function showExport(){
+  const tom=new Date();tom.setDate(tom.getDate()+1);
+  const tStr=toDateStr(tom);
+  const dayBookings=allBookings.filter(b=>b.date===tStr);
+  if(!dayBookings.length){alert('No hay reservas para manana.');return;}
+
+  const weekdays=['Domingo','Lunes','Martes','Miercoles','Jueves','Viernes','Sabado'];
+  const months=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  const d=new Date(tStr+'T12:00:00');
+  let text='*'+weekdays[d.getDay()]+' '+d.getDate()+' '+months[d.getMonth()]+'*\n\n';
+
+  for(const b of dayBookings){
+    const n=allNotes[b.id]||{};
+    const p=b.parsed;
+    const phone=n.phone||p.phone||'';
+    const flag=getFlag(phone);
+    const time=formatTime(b.start).replace(':','');
+    const boat=n.boat||'--';
+    const pax=n.pax||p.pax||'--';
+    const balance=n.balance?n.balance+'EUR':'--';
+    const skipper=n.skipper?(n.skipper.toUpperCase()):'--';
+    const food=n.comment||'';
+    const buyer=p.buyer?(p.buyer.toUpperCase()):'--';
+
+    text+=boat+' '+time+' --> '+pax+'pax.';
+    if(food)text+=' '+food+'.';
+    text+=' '+balance;
+    text+=' '+flag+' '+skipper+' + '+buyer;
+    text+='\n';
+  }
+
+  document.getElementById('exportText').textContent=text;
+  document.getElementById('exportModal').style.display='flex';
+}
+function closeExport(){document.getElementById('exportModal').style.display='none';}
+function copyExport(){
+  const text=document.getElementById('exportText').textContent;
+  navigator.clipboard.writeText(text).then(()=>{
+    const btn=event.target;btn.textContent='Copiado!';
+    setTimeout(()=>btn.textContent='Copiar',2000);
+  });
+}
+
 function switchTab(tab){document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));document.getElementById('tab-'+tab).classList.add('active');['tomorrow','week','planning'].forEach(v=>{document.getElementById('view-'+v).style.display=v===tab?'block':'none';});}
 function showLogin(){document.getElementById('loginScreen').style.display='flex';document.getElementById('appContent').style.display='none';document.getElementById('tabBar').style.display='none';document.getElementById('btnSync').style.display='none';document.getElementById('btnRefresh').style.display='none';document.getElementById('btnLogout').style.display='none';}
 function showApp(admin){document.getElementById('loginScreen').style.display='none';document.getElementById('appContent').style.display='block';document.getElementById('tabBar').style.display='flex';document.getElementById('btnRefresh').style.display='inline-flex';if(admin||isAdmin){document.getElementById('btnSync').style.display='inline-flex';document.getElementById('btnLogout').style.display='inline-flex';}}
