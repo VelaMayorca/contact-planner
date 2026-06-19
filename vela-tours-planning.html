@@ -371,6 +371,8 @@ function renderView(bookings,cid,isTomorrow){
   const byDate={};for(const b of bookings){if(!byDate[b.date])byDate[b.date]=[];byDate[b.date].push(b);}
   const totalPax=bookings.reduce((s,b)=>s+(parseInt(b.parsed.pax)||0),0);
   const contacted=bookings.filter(b=>allNotes[b.id]?.contacted==='si').length;
+  const reminded=bookings.filter(b=>allNotes[b.id]?.contacted==='reminder').length;
+  const notContacted=bookings.filter(b=>!allNotes[b.id]?.contacted||allNotes[b.id]?.contacted==='').length;
   const totalBalance=bookings.reduce((s,b)=>s+(parseFloat(allNotes[b.id]?.balance)||0),0);
   const newNotes=bookings.filter(b=>hasNewNotes(b.id)).length;
 
@@ -384,14 +386,19 @@ function renderView(bookings,cid,isTomorrow){
   html+='<div class="top-bar"><div class="summary-bar">';
   html+='<div class="sum-item"><div class="sum-num">'+bookings.length+'</div><div class="sum-label">Reservas</div></div>';
   html+='<div class="sum-item"><div class="sum-num">'+(totalPax||'--')+'</div><div class="sum-label">Personas</div></div>';
-  html+='<div class="sum-item"><div class="sum-num">'+contacted+'/'+bookings.length+'</div><div class="sum-label">Contactados</div></div>';
+  html+='<div class="sum-item"><div class="sum-num" style="color:var(--danger)">'+notContacted+'</div><div class="sum-label">Sin contactar</div></div>';
+  html+='<div class="sum-item"><div class="sum-num" style="color:var(--warn)">'+contacted+'</div><div class="sum-label">Contactados</div></div>';
+  html+='<div class="sum-item"><div class="sum-num" style="color:var(--success)">'+reminded+'</div><div class="sum-label">Enviados</div></div>';
   if(totalBalance>0)html+='<div class="sum-item"><div class="sum-num sum-balance">'+totalBalance.toLocaleString('es-ES',{minimumFractionDigits:0,maximumFractionDigits:0})+'&#8364;</div><div class="sum-label">Balance</div></div>';
-  const totalTapas=bookings.reduce((s,b)=>s+(parseInt(allNotes[b.id]?.food_tapas)||0),0);
-  const totalFish=bookings.reduce((s,b)=>s+(parseInt(allNotes[b.id]?.food_fish)||0),0);
-  const totalMeat=bookings.reduce((s,b)=>s+(parseInt(allNotes[b.id]?.food_meat)||0),0);
-  if(totalTapas>0)html+='<div class="sum-item"><div class="sum-num">'+totalTapas+'</div><div class="sum-label">&#127860; Tapas</div></div>';
-  if(totalFish>0)html+='<div class="sum-item"><div class="sum-num">'+totalFish+'</div><div class="sum-label">&#128031; Fish P.</div></div>';
-  if(totalMeat>0)html+='<div class="sum-item"><div class="sum-num">'+totalMeat+'</div><div class="sum-label">&#129385; Meat P.</div></div>';
+  const tapasList=bookings.map(b=>parseInt(allNotes[b.id]?.food_tapas)||0).filter(v=>v>0);
+  const fishList=bookings.map(b=>parseInt(allNotes[b.id]?.food_fish)||0).filter(v=>v>0);
+  const meatList=bookings.map(b=>parseInt(allNotes[b.id]?.food_meat)||0).filter(v=>v>0);
+  const totalTapas=tapasList.reduce((s,v)=>s+v,0);
+  const totalFish=fishList.reduce((s,v)=>s+v,0);
+  const totalMeat=meatList.reduce((s,v)=>s+v,0);
+  if(totalTapas>0)html+='<div class="sum-item"><div class="sum-num">'+totalTapas+'</div><div class="sum-label">&#127860; Tapas ('+tapasList.join('-')+')</div></div>';
+  if(totalFish>0)html+='<div class="sum-item"><div class="sum-num">'+totalFish+'</div><div class="sum-label">&#128031; Fish ('+fishList.join('-')+')</div></div>';
+  if(totalMeat>0)html+='<div class="sum-item"><div class="sum-num">'+totalMeat+'</div><div class="sum-label">&#129385; Meat ('+meatList.join('-')+')</div></div>';
   if(newNotes>0)html+='<div class="sum-item"><div class="sum-num" style="color:var(--danger)">'+newNotes+'</div><div class="sum-label">Notas nuevas</div></div>';
   html+='</div>'+exportBtn+'</div>';
 
