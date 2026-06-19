@@ -503,7 +503,8 @@ function renderCard(b){
   const waNum=phone?buildWa(phone):'';
   const flag=getFlag(phone);
   const isReady=isBookingReady(n,phone);
-  const dotC=isReady?'dot-ready':(n.contacted==='si'||n.contacted==='reminder'?'dot-done':(phone?'dot-pending':'dot-none'));
+  const isContacted=n.contacted==='si'||n.contacted==='reminder';
+  const dotC=isReady?'dot-ready':(isContacted?'dot-done':(phone?'dot-pending':'dot-none'));
   const sid=esc(b.id);
   const boat=n.boat||'';
   const skipper=n.skipper||'';
