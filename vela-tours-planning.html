@@ -511,7 +511,8 @@ function renderCard(b){
   const skipper=n.skipper||'';
   const isNew=hasNewNotes(b.id);
 
-  const cardBg=isReady?' is-ready':isContacted?' is-contacted':'';
+  const isReminder=n.contacted==='reminder';
+  const cardBg=isReminder?' is-ready':isContacted?' is-contacted':'';
   let html='<div class="booking-card'+(isNew?' has-new-notes':'')+cardBg+'" id="card-'+sid+'">';
   html+='<div class="card-top">';
   html+='<div class="time-col" onclick="toggleNotes(\''+sid+'\',\''+esc(b.id)+'\')"><div class="time-big">'+formatTime(b.start)+'</div><div class="time-end">'+formatTime(b.end)+'</div></div>';
