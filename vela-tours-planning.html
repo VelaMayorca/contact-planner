@@ -432,9 +432,41 @@ function parseEvent(ev){
 }
 
 // ── Prefix ────────────────────────────────────────────────────────────────────
-const CDB=[{cc:'+34',flag:'\uD83C\uDDEA\uD83C\uDDF8',local:[9]},{cc:'+44',flag:'\uD83C\uDDEC\uD83C\uDDE7',local:[10]},{cc:'+49',flag:'\uD83C\uDDE9\uD83C\uDDEA',local:[10,11]},
-  {cc:'+33',flag:'\uD83C\uDDEB\uD83C\uDDF7',local:[9]},{cc:'+1',flag:'\uD83C\uDDFA\uD83C\uDDF8',local:[10]},{cc:'+31',flag:'\uD83C\uDDF3\uD83C\uDDF1',local:[9]},
-  {cc:'+39',flag:'\uD83C\uDDEE\uD83C\uDDF9',local:[9,10]},{cc:'+351',flag:'\uD83C\uDDF5\uD83C\uDDF9',local:[9]},{cc:'+55',flag:'\uD83C\uDDE7\uD83C\uDDF7',local:[11]},{cc:'+61',flag:'\uD83C\uDDE6\uD83C\uDDFA',local:[9]}];
+const CDB=[
+  {cc:'+34', flag:'🇪🇸', local:[9]},
+  {cc:'+44', flag:'🇬🇧', local:[10]},
+  {cc:'+49', flag:'🇩🇪', local:[10,11]},
+  {cc:'+33', flag:'🇫🇷', local:[9]},
+  {cc:'+1',  flag:'🇺🇸', local:[10]},
+  {cc:'+31', flag:'🇳🇱', local:[9]},
+  {cc:'+39', flag:'🇮🇹', local:[9,10]},
+  {cc:'+351',flag:'🇵🇹', local:[9]},
+  {cc:'+352',flag:'🇱🇺', local:[9]},
+  {cc:'+32', flag:'🇧🇪', local:[9]},
+  {cc:'+41', flag:'🇨🇭', local:[9]},
+  {cc:'+43', flag:'🇦🇹', local:[10,11]},
+  {cc:'+46', flag:'🇸🇪', local:[9]},
+  {cc:'+47', flag:'🇳🇴', local:[8]},
+  {cc:'+45', flag:'🇩🇰', local:[8]},
+  {cc:'+358',flag:'🇫🇮', local:[9,10]},
+  {cc:'+48', flag:'🇵🇱', local:[9]},
+  {cc:'+420',flag:'🇨🇿', local:[9]},
+  {cc:'+36', flag:'🇭🇺', local:[9]},
+  {cc:'+7',  flag:'🇷🇺', local:[10]},
+  {cc:'+55', flag:'🇧🇷', local:[11]},
+  {cc:'+61', flag:'🇦🇺', local:[9]},
+  {cc:'+81', flag:'🇯🇵', local:[10,11]},
+  {cc:'+86', flag:'🇨🇳', local:[11]},
+  {cc:'+972',flag:'🇮🇱', local:[9]},
+  {cc:'+971',flag:'🇦🇪', local:[9]},
+  {cc:'+353',flag:'🇮🇪', local:[9]},
+  {cc:'+54', flag:'🇦🇷', local:[10]},
+  {cc:'+52', flag:'🇲🇽', local:[10]},
+  {cc:'+56', flag:'🇨🇱', local:[9]},
+  {cc:'+57', flag:'🇨🇴', local:[10]},
+  {cc:'+27', flag:'🇿🇦', local:[9]},
+  {cc:'+64', flag:'🇳🇿', local:[9]},
+];
 const BOOST={'+34':2.5,'+44':2.0,'+49':1.8,'+33':1.5,'+1':1.5,'+31':1.4};
 function hasPrefix(p){const n=p.replace(/[^0-9+]/g,'');return n.startsWith('+')||n.startsWith('00');}
 function guessPrefix(phone){
@@ -586,7 +618,7 @@ function renderCard(b){
   // Notes panel
   const boatOpts=BOATS.map(bt=>'<option value="'+bt+'" '+(n.boat===bt?'selected':'')+'>'+bt+'</option>').join('');
   const skipOpts=SKIPPERS.map(sk=>'<option value="'+sk+'" '+(n.skipper===sk?'selected':'')+'>'+sk+'</option>').join('');
-  html+='<div class="notes-panel '+(allNotes[b.id]?'open':'')+'" id="notes-'+sid+'">';
+  html+='<div class="notes-panel" id="notes-'+sid+'">';
   html+='<div class="notes-grid">';
   html+='<div class="note-field"><label>Personas confirmadas</label><input type="number" min="1" max="50" placeholder="'+esc(p.pax||'')+'" value="'+esc(n.pax||'')+'" id="n-pax-'+sid+'"/></div>';
   html+='<div class="note-field"><label>Comida</label><select id="n-food-'+sid+'" onchange="toggleFoodFields(this)">'
