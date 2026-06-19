@@ -86,7 +86,8 @@
   .status-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;margin-top:4px;}
   .dot-pending{background:var(--warn);}.dot-done{background:var(--success);}.dot-none{background:var(--border);}.dot-ready{background:#7c3aed;}
   /* Ready card */
-  .booking-card.is-ready{border-color:#7c3aed;background:linear-gradient(135deg,#faf8ff,#f0ebff);}
+  .booking-card.is-ready{border-color:#22a06b;background:#f0fdf4;}
+  .booking-card.is-contacted{background:#f6fef9;}
   .booking-card.is-ready .time-big{color:#7c3aed;}
   .ready-badge{background:#7c3aed;color:#fff;font-size:0.68rem;font-weight:700;border-radius:10px;padding:2px 7px;margin-left:6px;vertical-align:middle;}
   /* Progress ring */
@@ -500,13 +501,14 @@ function renderCard(b){
   const waNum=phone?buildWa(phone):'';
   const flag=getFlag(phone);
   const isReady=isBookingReady(n,phone);
-  const dotC=isReady?'dot-ready':(n.contacted==='si'||n.contacted==='reminder'?'dot-done':(phone?'dot-pending':'dot-none'));
+  const isContacted=n.contacted==='si'||n.contacted==='reminder';
+  const dotC=isReady?'dot-ready':(isContacted?'dot-done':(phone?'dot-pending':'dot-none'));
   const sid=esc(b.id);
   const boat=n.boat||'';
   const skipper=n.skipper||'';
   const isNew=hasNewNotes(b.id);
 
-  let html='<div class="booking-card'+(isNew?' has-new-notes':'')+(isReady?' is-ready':'')+'" id="card-'+sid+'">';
+  let html='<div class="booking-card'+(isNew?' has-new-notes':'')+(isReady?' is-ready':(!isContacted?'':' is-contacted'))+'" id="card-'+sid+'">';
   html+='<div class="card-top">';
   html+='<div class="time-col" onclick="toggleNotes(\''+sid+'\',\''+esc(b.id)+'\')"><div class="time-big">'+formatTime(b.start)+'</div><div class="time-end">'+formatTime(b.end)+'</div></div>';
   html+='<div class="divider-v"></div>';
