@@ -509,7 +509,8 @@ function renderCard(b){
   const skipper=n.skipper||'';
   const isNew=hasNewNotes(b.id);
 
-  let html='<div class="booking-card'+(isNew?' has-new-notes':'')+(isReady?' is-ready':'')+'" id="card-'+sid+'">';
+  const cardBg=isReady?' is-ready':isContacted?' is-contacted':'';
+  let html='<div class="booking-card'+(isNew?' has-new-notes':'')+cardBg+'" id="card-'+sid+'">';
   html+='<div class="card-top">';
   html+='<div class="time-col" onclick="toggleNotes(\''+sid+'\',\''+esc(b.id)+'\')"><div class="time-big">'+formatTime(b.start)+'</div><div class="time-end">'+formatTime(b.end)+'</div></div>';
   html+='<div class="divider-v"></div>';
@@ -522,7 +523,20 @@ function renderCard(b){
   if(boat)html+='<span class="meta-chip chip-boat">&#128674; '+esc(boat)+'</span>';
   if(skipper)html+='<span class="meta-chip chip-type">&#128081; '+esc(skipper)+'</span>';
   if(p.variant)html+='<span class="meta-chip chip-type">'+esc(p.variant)+'</span>';
-  html+='</div></div>';
+  html+='</div>';
+  // Notes summary pills inside info-col
+  const pills=[];
+  if(n.contacted==='si')pills.push('<span class="note-pill">&#9989; Contactado</span>');
+  else if(n.contacted==='reminder')pills.push('<span class="note-pill">&#128228; Reminder enviado</span>');
+  else if(n.contacted==='no_responde')pills.push('<span class="note-pill">&#128244; No responde</span>');
+  if(n.balance)pills.push('<span class="note-pill">&#128176; <strong>'+n.balance+'&#8364;</strong></span>');
+  const tapas=parseInt(n.food_tapas)||0,fish=parseInt(n.food_fish)||0,meat=parseInt(n.food_meat)||0;
+  if(tapas>0)pills.push('<span class="note-pill">&#127860; <strong>'+tapas+'</strong> tapas</span>');
+  if(fish>0)pills.push('<span class="note-pill">&#128031; <strong>'+fish+'</strong> fish</span>');
+  if(meat>0)pills.push('<span class="note-pill">&#129385; <strong>'+meat+'</strong> meat</span>');
+  if(n.comment)pills.push('<span class="note-pill">&#128172; '+esc(n.comment.slice(0,40))+(n.comment.length>40?'...':'')+'</span>');
+  if(pills.length)html+='<div class="notes-summary" style="margin-top:8px;display:flex;flex-wrap:wrap;gap:5px;">'+pills.join('')+'</div>';
+  html+='</div>';
   html+='<div class="status-dot '+dotC+'" id="dot-'+sid+'"></div>';
   html+='</div>';
 
