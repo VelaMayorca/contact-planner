@@ -84,7 +84,22 @@
   .btn-phone-save{display:none;background:var(--success);color:#fff;border:none;border-radius:6px;padding:3px 8px;font-size:0.72rem;font-weight:600;cursor:pointer;}
   .prefix-hint{font-size:0.72rem;color:var(--warn);display:block;margin-top:2px;}
   .status-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;margin-top:4px;}
-  .dot-pending{background:var(--warn);}.dot-done{background:var(--success);}.dot-none{background:var(--border);}
+  .dot-pending{background:var(--warn);}.dot-done{background:var(--success);}.dot-none{background:var(--border);}.dot-ready{background:#7c3aed;}
+  /* Ready card */
+  .booking-card.is-ready{border-color:#7c3aed;background:linear-gradient(135deg,#faf8ff,#f0ebff);}
+  .booking-card.is-ready .time-big{color:#7c3aed;}
+  .ready-badge{background:#7c3aed;color:#fff;font-size:0.68rem;font-weight:700;border-radius:10px;padding:2px 7px;margin-left:6px;vertical-align:middle;}
+  /* Progress ring */
+  .progress-wrap{display:flex;align-items:center;gap:16px;background:var(--white);border:1.5px solid var(--border);border-radius:14px;padding:14px 20px;margin-bottom:18px;box-shadow:0 2px 8px rgba(10,33,64,0.07);}
+  .progress-ring{position:relative;width:70px;height:70px;flex-shrink:0;}
+  .progress-ring svg{transform:rotate(-90deg);}
+  .progress-ring .ring-bg{fill:none;stroke:#e8f0fe;stroke-width:6;}
+  .progress-ring .ring-fill{fill:none;stroke-width:6;stroke-linecap:round;transition:stroke-dashoffset 0.5s ease;}
+  .progress-pct{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:'DM Serif Display',serif;font-size:1rem;font-weight:700;}
+  .progress-info{flex:1;}
+  .progress-title{font-weight:700;font-size:0.95rem;color:var(--text);margin-bottom:4px;}
+  .progress-sub{font-size:0.78rem;color:var(--muted);}
+  .btn-notify{background:#25d366;color:#fff;border:none;border-radius:8px;padding:8px 14px;font-family:'Inter',sans-serif;font-size:0.82rem;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:6px;}
   .card-actions{padding:0 18px 12px;display:flex;gap:7px;flex-wrap:wrap;}
   .btn-sm{border:none;border-radius:7px;padding:6px 11px;font-size:0.75rem;font-weight:600;font-family:'Inter',sans-serif;cursor:pointer;transition:opacity 0.15s,transform 0.1s;display:inline-flex;align-items:center;gap:4px;}
   .btn-sm:active{transform:scale(0.95);}
@@ -355,12 +370,13 @@ function renderView(bookings,cid,isTomorrow){
   const totalBalance=bookings.reduce((s,b)=>s+(parseFloat(allNotes[b.id]?.balance)||0),0);
   const newNotes=bookings.filter(b=>hasNewNotes(b.id)).length;
 
+  const progressRing=renderProgressRing(bookings,isTomorrow);
   let adminBar='';
   if(isAdmin&&isTomorrow){adminBar='<div class="admin-bar"><span>&#128274; Modo <strong>Admin</strong></span><button class="btn btn-teal" onclick="syncCalendar()" style="padding:5px 10px;font-size:0.76rem">&#8645; Sincronizar</button></div>';}
 
   let exportBtn=isTomorrow?'<button class="btn btn-export btn-sm" onclick="showExport()">&#128203; Exportar</button>':'';
 
-  let html=filters+adminBar;
+  let html=filters+adminBar+progressRing;
   html+='<div class="top-bar"><div class="summary-bar">';
   html+='<div class="sum-item"><div class="sum-num">'+bookings.length+'</div><div class="sum-label">Reservas</div></div>';
   html+='<div class="sum-item"><div class="sum-num">'+(totalPax||'--')+'</div><div class="sum-label">Personas</div></div>';
@@ -428,6 +444,45 @@ function buildWa(phone){
   else n=n.slice(1);return n;
 }
 
+// ── Progress & ready logic ───────────────────────────────────────────────────
+function isBookingReady(n,phone){
+  const p=phone||n.phone||'';
+  return !!(p && n.pax && n.food && n.boat && n.balance && n.contacted==='reminder' && n.comment);
+}
+function calcProgress(bookings){
+  if(!bookings.length)return{pct:0,ready:0,total:0,pending:[]};
+  const FIELDS=['phone','pax','food','boat','balance','contacted','comment'];
+  let totalFields=0,filledFields=0,readyCount=0,pendingNames=[];
+  for(const b of bookings){
+    const n=allNotes[b.id]||{};
+    const phone=n.phone||b.parsed.phone||'';
+    totalFields+=FIELDS.length;
+    if(phone)filledFields++;
+    if(n.pax)filledFields++;
+    if(n.food)filledFields++;
+    if(n.boat)filledFields++;
+    if(n.balance)filledFields++;
+    if(n.contacted==='reminder')filledFields++;
+    if(n.comment)filledFields++;
+    if(isBookingReady(n,phone))readyCount++;
+    else pendingNames.push(b.parsed.buyer||b.title);
+  }
+  return{pct:Math.round(filledFields/totalFields*100),ready:readyCount,total:bookings.length,pending:pendingNames};
+}
+function renderProgressRing(bookings,isTomorrow){
+  if(!isTomorrow)return'';
+  const{pct,ready,total,pending}=calcProgress(bookings);
+  const r=30,circ=2*Math.PI*r,offset=circ-(pct/100*circ);
+  const color=pct===100?'#7c3aed':pct>=60?'var(--success)':pct>=30?'var(--warn)':'var(--danger)';
+  let notifyBtn='';
+  if(pct===100){
+    const msg=encodeURIComponent('Hola Alberto! Ya puedes acceder a exportar el planning de manana. Todo completado al 100%.');
+    notifyBtn='<a href="https://wa.me/34672751717?text='+msg+'" target="_blank"><button class="btn-notify">&#128172; Avisar a Alberto</button></a>';
+  }
+  const subText=pct===100?'Todo completado! '+ready+'/'+total+' reservas listas.':(ready+'/'+total+' reservas completas. Pendiente: '+pending.slice(0,2).map(n=>n.split(' ')[0]).join(', ')+(pending.length>2?' y '+(pending.length-2)+' mas':'')+'.');
+  return'<div class="progress-wrap"><div class="progress-ring"><svg width="70" height="70" viewBox="0 0 70 70"><circle class="ring-bg" cx="35" cy="35" r="'+r+'"/><circle class="ring-fill" cx="35" cy="35" r="'+r+'" stroke="'+color+'" stroke-dasharray="'+circ.toFixed(1)+'" stroke-dashoffset="'+offset.toFixed(1)+'"/></svg><div class="progress-pct" style="color:'+color+'">'+pct+'%</div></div><div class="progress-info"><div class="progress-title">Planning de manana</div><div class="progress-sub">'+subText+'</div></div>'+notifyBtn+'</div>';
+}
+
 // ── Render card ───────────────────────────────────────────────────────────────
 function renderCard(b){
   const p=b.parsed,n=allNotes[b.id]||{};
@@ -436,18 +491,19 @@ function renderCard(b){
   const guess=needsP?guessPrefix(phone):null;
   const waNum=phone?buildWa(phone):'';
   const flag=getFlag(phone);
-  const dotC=n.contacted==='si'?'dot-done':(phone?'dot-pending':'dot-none');
+  const isReady=isBookingReady(n,phone);
+  const dotC=isReady?'dot-ready':(n.contacted==='si'||n.contacted==='reminder'?'dot-done':(phone?'dot-pending':'dot-none'));
   const sid=esc(b.id);
   const boat=n.boat||'';
   const skipper=n.skipper||'';
   const isNew=hasNewNotes(b.id);
 
-  let html='<div class="booking-card'+(isNew?' has-new-notes':'')+'" id="card-'+sid+'">';
+  let html='<div class="booking-card'+(isNew?' has-new-notes':'')+(isReady?' is-ready':'')+'" id="card-'+sid+'">';
   html+='<div class="card-top">';
   html+='<div class="time-col" onclick="toggleNotes(\''+sid+'\',\''+esc(b.id)+'\')"><div class="time-big">'+formatTime(b.start)+'</div><div class="time-end">'+formatTime(b.end)+'</div></div>';
   html+='<div class="divider-v"></div>';
   html+='<div class="info-col" onclick="toggleNotes(\''+sid+'\',\''+esc(b.id)+'\')">';
-  html+='<div class="booking-title">'+esc(b.title)+(isNew&&!isAdmin?'<span class="new-badge">NUEVO</span>':'')+'</div>';
+  html+='<div class="booking-title">'+esc(b.title)+(isReady?'<span class="ready-badge">&#10003; LISTO</span>':'')+(isNew&&!isAdmin?'<span class="new-badge">NUEVO</span>':'')+'</div>';
   if(p.buyer)html+='<div class="booking-buyer">&#129489; '+esc(p.buyer)+'</div>';
   if(p.email)html+='<div class="booking-email">&#9993; '+esc(p.email)+'</div>';
   html+='<div class="booking-meta">';
@@ -487,7 +543,7 @@ function renderCard(b){
   html+='<div class="note-field"><label>Patron</label><select id="n-skipper-'+sid+'"><option value="">-- Seleccionar --</option>'+skipOpts+'</select></div>';
   html+='<div class="note-field"><label>Balance (EUR)</label><input type="number" min="0" step="0.01" placeholder="0.00" value="'+esc(n.balance||'')+'" id="n-balance-'+sid+'"/></div>';
   html+='<div class="note-field"><label>Extras</label><input type="text" placeholder="Snorkel, kayak..." value="'+esc(n.extras||'')+'" id="n-extras-'+sid+'"/></div>';
-  html+='<div class="note-field"><label>Contactado</label><select id="n-contacted-'+sid+'"><option value="" '+((!n.contacted)?'selected':'')+'>-- Pendiente --</option><option value="si" '+((n.contacted==='si')?'selected':'')+'>Si, contactado</option><option value="no_responde" '+((n.contacted==='no_responde')?'selected':'')+'>No responde</option></select></div>';
+  html+='<div class="note-field"><label>Contactado</label><select id="n-contacted-'+sid+'"><option value="" '+((!n.contacted)?'selected':'')+'>-- Pendiente --</option><option value="si" '+((n.contacted==='si')?'selected':'')+'>Si, contactado</option><option value="reminder" '+((n.contacted==='reminder')?'selected':'')+'>Reminder enviado</option><option value="no_responde" '+((n.contacted==='no_responde')?'selected':'')+'>No responde</option></select></div>';
   html+='<div class="note-field" style="grid-column:1/-1"><label>Peticiones / Comida</label><textarea placeholder="Tapas, Paella, alergias..." id="n-comment-'+sid+'">'+esc(n.comment||'')+'</textarea></div>';
   html+='</div>';
   html+='<div class="notes-footer"><span class="save-status" id="status-'+sid+'"></span><button class="btn-save" id="save-'+sid+'" onclick="saveNotes(\''+sid+'\',\''+esc(b.id)+'\')">Guardar notas</button></div>';
