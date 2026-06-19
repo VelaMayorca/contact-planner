@@ -621,8 +621,11 @@ async function savePhone(sid,eventId){
   if(!inp)return;
   btn.textContent='...';
   try{
+    let phoneVal=inp.value.trim();
+    if(phoneVal.startsWith('00'))phoneVal='+'+phoneVal.slice(2);
+    inp.value=phoneVal;
     const existing=allNotes[eventId]||{};
-    await upsertNote(eventId,{...existing,phone:inp.value.trim()});
+    await upsertNote(eventId,{...existing,phone:phoneVal});
     if(!allNotes[eventId])allNotes[eventId]={};
     allNotes[eventId].phone=inp.value.trim();
     btn.textContent='OK';btn.style.background='var(--success)';
