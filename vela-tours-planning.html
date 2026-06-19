@@ -289,6 +289,9 @@ async function loadFromSupabase(){
     const wStr=toDateStr(wEnd);
     const[events,notesMap]=await Promise.all([loadEventsFromSupabase(tStr,wStr),loadAllNotes()]);
     allNotes=notesMap;allBookings=events;
+    console.log('allNotes loaded:', Object.keys(allNotes).length, 'entries');
+    const phoneEntries=Object.entries(allNotes).filter(([k,v])=>v.phone);
+    console.log('Notes with phone:', phoneEntries.map(([k,v])=>k+':'+v.phone));
     renderTomorrow();
     renderWeek();
     if(!events.length){['tomorrow','week'].forEach(v=>{document.getElementById('view-'+v).innerHTML='<div class="state-screen"><div class="icon">&#127754;</div><h2>Sin reservas</h2><p>'+(isAdmin?'Pulsa Sync para cargar el calendario.':'Sin reservas por ahora.')+'</p></div>';});}
@@ -451,7 +454,20 @@ function guessPrefix(phone){
 function getFlag(phone){
   if(!phone)return '';
   const n=phone.replace(/[\s\-(). ]/g,'');
-  if(n.startsWith('+')){for(const len of[3,2,1]){const cc='+'+n.slice(1,1+len);const e=CDB.find(x=>x.cc===cc);if(e)return e.flag;}}
+  if(n.startsWith('+')){
+    // Try longest match first (3 digits, then 2, then 1)
+    for(const len of[3,2,1]){
+      const cc='+'+n.slice(1,1+len);
+      const e=CDB.find(x=>x.cc===cc);
+      if(e)return e.flag;
+    }
+  } else if(n.startsWith('00')){
+    for(const len of[3,2,1]){
+      const cc='+'+n.slice(2,2+len);
+      const e=CDB.find(x=>x.cc===cc);
+      if(e)return e.flag;
+    }
+  }
   const g=guessPrefix(phone);return g?g.flag:'';
 }
 function buildWa(phone){
