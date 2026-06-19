@@ -703,19 +703,32 @@ function showExport(){
   const months=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
   const d=new Date(tStr+'T12:00:00');
   let text='*'+weekdays[d.getDay()]+' '+d.getDate()+' '+months[d.getMonth()]+'*\n\n';
-  for(const b of dayBookings){
-    const n=allNotes[b.id]||{},p=b.parsed;
+  for(let i=0;i<dayBookings.length;i++){
+    const b=dayBookings[i],n=allNotes[b.id]||{},p=b.parsed;
     const phone=n.phone||p.phone||'';
     const flag=getFlag(phone);
-    const time=formatTime(b.start).replace(':','');
+    const time=formatTime(b.start);
     const boat=n.boat||'--';
-    const pax=n.pax||p.pax||'--';
-    const balance=n.balance?n.balance+'EUR':'--';
+    const pax=parseInt(n.pax||p.pax)||0;
+    const balance=n.balance?n.balance+'€':'--';
     const skipper=n.skipper?n.skipper.toUpperCase():'--';
-    const food=n.comment||'';
-    text+=boat+' '+time+' --> '+pax+'pax.';
-    if(food)text+=' '+food+'.';
-    text+=' '+balance+' '+flag+' '+skipper+'\n';
+    const tapas=parseInt(n.food_tapas)||0;
+    const fish=parseInt(n.food_fish)||0;
+    const meat=parseInt(n.food_meat)||0;
+    if(i>0)text+='\n';
+    // Line 1: boat, time, pax, skipper, flag
+    text+='⛵ *'+boat+'* '+time+' → '+pax+'pax · 👤'+skipper+' '+flag+'\n';
+    // Line 2: food + comment + extras + balance
+    const foodParts=[];
+    if(tapas>0)foodParts.push((tapas!==pax?tapas+'x ':'')+' Tapas');
+    if(fish>0)foodParts.push((fish!==pax?fish+'x ':'')+' Fish Paella');
+    if(meat>0)foodParts.push((meat!==pax?meat+'x ':'')+' Meat Paella');
+    const line2parts=[];
+    if(foodParts.length>0)line2parts.push(foodParts.join('+'));
+    if(n.comment)line2parts.push(n.comment);
+    if(n.extras)line2parts.push(n.extras);
+    line2parts.push('💰'+balance);
+    text+=line2parts.join(' · ')+'\n';
   }
   document.getElementById('exportText').textContent=text;
   document.getElementById('exportModal').style.display='flex';
