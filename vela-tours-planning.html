@@ -632,7 +632,7 @@ function renderCard(b){
   if(phone){
     html+='<button class="btn-sm btn-copy" onclick="copyText(\''+esc(phone)+'\',this)">&#128203; Copiar</button>';
     html+='<a href="https://wa.me/'+waNum+'" target="_blank"><button class="btn-sm btn-wa">&#128172; WhatsApp</button></a>';
-    html+='<button class="btn-sm" style="background:#dcfce7;color:#16a34a;border:1px solid #16a34a" onclick="openWaTemplate(''+esc(b.id)+'',event)">&#128172; Reminder</button>';
+    html+='<button class="btn-sm" style="background:#dcfce7;color:#16a34a;border:1px solid #16a34a" onclick="openWaTemplate(\''+esc(b.id)+'\',event)">&#128172; Reminder</button>';
   }
   html+='<button class="btn-sm btn-notes" onclick="toggleNotes(\''+sid+'\',\''+esc(b.id)+'\')">&#128221; '+(allNotes[b.id]?'Notas':'Notas')+'</button>';
   html+='</div>';
