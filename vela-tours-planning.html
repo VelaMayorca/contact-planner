@@ -64,7 +64,7 @@
   /* Cards */
   .booking-card{background:var(--white);border:1.5px solid var(--border);border-radius:14px;margin-bottom:12px;overflow:hidden;box-shadow:0 2px 12px rgba(10,33,64,0.07);transition:border-color 0.2s;}
   .booking-card:hover{border-color:var(--blue);}
-  .booking-card.has-new-notes{border-color:var(--danger);}
+
   .card-top{padding:14px 18px;display:flex;align-items:flex-start;gap:12px;}
   .time-col{flex-shrink:0;text-align:center;min-width:48px;cursor:pointer;}
   .time-big{font-family:'DM Serif Display',serif;font-size:1.2rem;color:var(--blue);line-height:1;}
@@ -289,9 +289,7 @@ async function loadFromSupabase(){
     const wStr=toDateStr(wEnd);
     const[events,notesMap]=await Promise.all([loadEventsFromSupabase(tStr,wStr),loadAllNotes()]);
     allNotes=notesMap;allBookings=events;
-    console.log('allNotes loaded:', Object.keys(allNotes).length, 'entries');
-    const phoneEntries=Object.entries(allNotes).filter(([k,v])=>v.phone);
-    console.log('Notes with phone:', phoneEntries.map(([k,v])=>k+':'+v.phone));
+
     renderTomorrow();
     renderWeek();
     if(!events.length){['tomorrow','week'].forEach(v=>{document.getElementById('view-'+v).innerHTML='<div class="state-screen"><div class="icon">&#127754;</div><h2>Sin reservas</h2><p>'+(isAdmin?'Pulsa Sync para cargar el calendario.':'Sin reservas por ahora.')+'</p></div>';});}
@@ -303,26 +301,14 @@ async function loadFromSupabase(){
 // ── State ─────────────────────────────────────────────────────────────────────
 let allBookings=[],allNotes={};
 let activeBoatFilter='all', activeSkipperFilter='all';
-// Track last seen note timestamps for new note detection
-let lastSeenNotes={};
-try{lastSeenNotes=JSON.parse(localStorage.getItem('vt_seen_notes')||'{}');}catch(e){}
+
 
 function toDateStr(d){return d.toISOString().split('T')[0];}
 function formatTime(iso){if(!iso||!iso.includes('T'))return'--';try{return new Date(iso).toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'});}catch(e){return'--';}}
 function formatDateLabel(ds){try{const d=new Date(ds+'T12:00:00');return{weekday:d.toLocaleDateString('es-ES',{weekday:'long'}),rest:d.toLocaleDateString('es-ES',{day:'numeric',month:'long'})};}catch(e){return{weekday:'',rest:ds};}}
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 
-function hasNewNotes(eventId){
-  const n=allNotes[eventId];
-  if(!n||!n.updated_at)return false;
-  const seen=lastSeenNotes[eventId];
-  if(!seen)return true;
-  return new Date(n.updated_at)>new Date(seen);
-}
-function markAsSeen(eventId){
-  const n=allNotes[eventId];
-  if(n&&n.updated_at){lastSeenNotes[eventId]=n.updated_at;try{localStorage.setItem('vt_seen_notes',JSON.stringify(lastSeenNotes));}catch(e){}}
-}
+
 
 function filterBookings(bookings){
   return bookings.filter(b=>{
@@ -377,7 +363,7 @@ function renderView(bookings,cid,isTomorrow){
   const reminded=bookings.filter(b=>allNotes[b.id]?.contacted==='reminder').length;
   const notContacted=bookings.filter(b=>!allNotes[b.id]?.contacted||allNotes[b.id]?.contacted==='').length;
   const totalBalance=bookings.reduce((s,b)=>s+(parseFloat(allNotes[b.id]?.balance)||0),0);
-  const newNotes=bookings.filter(b=>hasNewNotes(b.id)).length;
+
 
   const progressRing=renderProgressRing(bookings,isTomorrow);
   let adminBar='';
@@ -402,7 +388,7 @@ function renderView(bookings,cid,isTomorrow){
   if(totalTapas>0)html+='<div class="sum-item"><div class="sum-num">'+totalTapas+'</div><div class="sum-label">&#127860; Tapas ('+tapasList.join('-')+')</div></div>';
   if(totalFish>0)html+='<div class="sum-item"><div class="sum-num">'+totalFish+'</div><div class="sum-label">&#128031; Fish ('+fishList.join('-')+')</div></div>';
   if(totalMeat>0)html+='<div class="sum-item"><div class="sum-num">'+totalMeat+'</div><div class="sum-label">&#129385; Meat ('+meatList.join('-')+')</div></div>';
-  if(newNotes>0)html+='<div class="sum-item"><div class="sum-num" style="color:var(--danger)">'+newNotes+'</div><div class="sum-label">Notas nuevas</div></div>';
+
   html+='</div>'+exportBtn+'</div>';
 
   for(const[date,dayB]of Object.entries(byDate)){
@@ -564,16 +550,16 @@ function renderCard(b){
   const sid=esc(b.id);
   const boat=n.boat||'';
   const skipper=n.skipper||'';
-  const isNew=hasNewNotes(b.id);
+  const isNew=false;
 
   const isReminder=n.contacted==='reminder';
   const cardBg=isReminder?' is-ready':isContacted?' is-contacted':'';
-  let html='<div class="booking-card'+(isNew?' has-new-notes':'')+cardBg+'" id="card-'+sid+'">';
+  let html='<div class="booking-card'+cardBg+'" id="card-'+sid+'">';
   html+='<div class="card-top">';
   html+='<div class="time-col" onclick="toggleNotes(\''+sid+'\',\''+esc(b.id)+'\')"><div class="time-big">'+formatTime(b.start)+'</div><div class="time-end">'+formatTime(b.end)+'</div></div>';
   html+='<div class="divider-v"></div>';
   html+='<div class="info-col" onclick="toggleNotes(\''+sid+'\',\''+esc(b.id)+'\')">';
-  html+='<div class="booking-title">'+esc(b.title)+(isReady?'<span class="ready-badge">&#10003; LISTO</span>':'')+(isNew&&!isAdmin?'<span class="new-badge">NUEVO</span>':'')+'</div>';
+  html+='<div class="booking-title">'+esc(b.title)+(isReady?'<span class="ready-badge">&#10003; LISTO</span>':'')+'</div>';
   if(p.buyer)html+='<div class="booking-buyer">&#129489; '+esc(p.buyer)+'</div>';
   if(p.email)html+='<div class="booking-email">&#9993; '+esc(p.email)+'</div>';
   html+='<div class="booking-meta">';
@@ -658,9 +644,7 @@ function toggleFoodFields(el){
 }
 function toggleNotes(sid,eventId){
   document.getElementById('notes-'+sid)?.classList.toggle('open');
-  markAsSeen(eventId);
-  const card=document.getElementById('card-'+sid);
-  if(card)card.classList.remove('has-new-notes');
+
 }
 function onPhoneInput(sid){const btn=document.getElementById('phonesave-'+sid);if(btn)btn.style.display='inline-flex';}
 function onPhoneBlur(sid){setTimeout(()=>{const btn=document.getElementById('phonesave-'+sid);if(btn&&document.activeElement!==btn)btn.style.display='none';},200);}
@@ -699,7 +683,7 @@ async function saveNotes(sid,eventId){
   };
   try{
     await upsertNote(eventId,fields);allNotes[eventId]={...fields,event_id:eventId};
-    markAsSeen(eventId);
+
     btn.textContent='Guardado';btn.classList.add('saved');if(st)st.textContent='Sincronizado';
     setTimeout(()=>{btn.textContent='Guardar notas';btn.classList.remove('saved');btn.disabled=false;if(st)st.textContent='';},2500);
     const dot=document.getElementById('dot-'+sid);if(dot)dot.className='status-dot '+(fields.contacted==='si'?'dot-done':'dot-pending');
