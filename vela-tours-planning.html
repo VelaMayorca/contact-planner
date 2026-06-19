@@ -83,11 +83,10 @@
   .phone-input:focus{border-bottom:2px solid var(--blue);background:#f0f8ff;border-radius:4px 4px 0 0;padding:2px 4px;}
   .btn-phone-save{display:none;background:var(--success);color:#fff;border:none;border-radius:6px;padding:3px 8px;font-size:0.72rem;font-weight:600;cursor:pointer;}
   .prefix-hint{font-size:0.72rem;color:var(--warn);display:block;margin-top:2px;}
-  .status-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;margin-top:4px;}
+  .status-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;margin-top:4px;display:none;}
   .dot-pending{background:var(--warn);}.dot-done{background:var(--success);}.dot-none{background:var(--border);}.dot-ready{background:#7c3aed;}
   /* Ready card */
-  .booking-card.is-ready{border-color:#22a06b;background:#f0fdf4;}
-  .booking-card.is-contacted{background:#f6fef9;}
+  .booking-card.is-ready{border-color:#7c3aed;background:linear-gradient(135deg,#faf8ff,#f0ebff);}
   .booking-card.is-ready .time-big{color:#7c3aed;}
   .ready-badge{background:#7c3aed;color:#fff;font-size:0.68rem;font-weight:700;border-radius:10px;padding:2px 7px;margin-left:6px;vertical-align:middle;}
   /* Progress ring */
@@ -102,6 +101,9 @@
   .progress-sub{font-size:0.78rem;color:var(--muted);}
   .btn-notify{background:#25d366;color:#fff;border:none;border-radius:8px;padding:8px 14px;font-family:'Inter',sans-serif;font-size:0.82rem;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:6px;}
   .card-actions{padding:0 18px 12px;display:flex;gap:7px;flex-wrap:wrap;}
+  .notes-summary{padding:0 18px 10px;display:flex;flex-wrap:wrap;gap:6px;}
+  .note-pill{font-size:0.72rem;background:rgba(0,0,0,0.05);color:var(--muted);border-radius:20px;padding:3px 9px;display:flex;align-items:center;gap:4px;}
+  .note-pill strong{color:var(--text);font-weight:600;}
   .btn-sm{border:none;border-radius:7px;padding:6px 11px;font-size:0.75rem;font-weight:600;font-family:'Inter',sans-serif;cursor:pointer;transition:opacity 0.15s,transform 0.1s;display:inline-flex;align-items:center;gap:4px;}
   .btn-sm:active{transform:scale(0.95);}
   .btn-copy{background:var(--border);color:var(--text);}.btn-copy.done{background:var(--success);color:#fff;}
@@ -501,14 +503,13 @@ function renderCard(b){
   const waNum=phone?buildWa(phone):'';
   const flag=getFlag(phone);
   const isReady=isBookingReady(n,phone);
-  const isContacted=n.contacted==='si'||n.contacted==='reminder';
-  const dotC=isReady?'dot-ready':(isContacted?'dot-done':(phone?'dot-pending':'dot-none'));
+  const dotC=isReady?'dot-ready':(n.contacted==='si'||n.contacted==='reminder'?'dot-done':(phone?'dot-pending':'dot-none'));
   const sid=esc(b.id);
   const boat=n.boat||'';
   const skipper=n.skipper||'';
   const isNew=hasNewNotes(b.id);
 
-  let html='<div class="booking-card'+(isNew?' has-new-notes':'')+(isReady?' is-ready':(!isContacted?'':' is-contacted'))+'" id="card-'+sid+'">';
+  let html='<div class="booking-card'+(isNew?' has-new-notes':'')+(isReady?' is-ready':'')+'" id="card-'+sid+'">';
   html+='<div class="card-top">';
   html+='<div class="time-col" onclick="toggleNotes(\''+sid+'\',\''+esc(b.id)+'\')"><div class="time-big">'+formatTime(b.start)+'</div><div class="time-end">'+formatTime(b.end)+'</div></div>';
   html+='<div class="divider-v"></div>';
