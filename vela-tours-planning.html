@@ -573,11 +573,13 @@ function renderCard(b){
 }
 
 // ── Interactions ──────────────────────────────────────────────────────────────
-function toggleFoodFields(sid){
-  const sel=document.getElementById('n-food-'+sid);
+function toggleFoodFields(el){
+  const card=el.closest('.booking-card');
+  if(!card)return;
+  const sid=card.id.replace('card-','');
   const qty=document.getElementById('food-qty-'+sid);
-  if(!sel||!qty)return;
-  qty.style.display=sel.value==='si'?'block':'none';
+  if(!qty)return;
+  qty.style.display=el.value==='si'?'block':'none';
 }
 function toggleNotes(sid,eventId){
   document.getElementById('notes-'+sid)?.classList.toggle('open');
