@@ -382,6 +382,12 @@ function renderView(bookings,cid,isTomorrow){
   html+='<div class="sum-item"><div class="sum-num">'+(totalPax||'--')+'</div><div class="sum-label">Personas</div></div>';
   html+='<div class="sum-item"><div class="sum-num">'+contacted+'/'+bookings.length+'</div><div class="sum-label">Contactados</div></div>';
   if(totalBalance>0)html+='<div class="sum-item"><div class="sum-num sum-balance">'+totalBalance.toLocaleString('es-ES',{minimumFractionDigits:0,maximumFractionDigits:0})+'&#8364;</div><div class="sum-label">Balance</div></div>';
+  const totalTapas=bookings.reduce((s,b)=>s+(parseInt(allNotes[b.id]?.food_tapas)||0),0);
+  const totalFish=bookings.reduce((s,b)=>s+(parseInt(allNotes[b.id]?.food_fish)||0),0);
+  const totalMeat=bookings.reduce((s,b)=>s+(parseInt(allNotes[b.id]?.food_meat)||0),0);
+  if(totalTapas>0)html+='<div class="sum-item"><div class="sum-num">'+totalTapas+'</div><div class="sum-label">&#127860; Tapas</div></div>';
+  if(totalFish>0)html+='<div class="sum-item"><div class="sum-num">'+totalFish+'</div><div class="sum-label">&#128031; Fish P.</div></div>';
+  if(totalMeat>0)html+='<div class="sum-item"><div class="sum-num">'+totalMeat+'</div><div class="sum-label">&#129385; Meat P.</div></div>';
   if(newNotes>0)html+='<div class="sum-item"><div class="sum-num" style="color:var(--danger)">'+newNotes+'</div><div class="sum-label">Notas nuevas</div></div>';
   html+='</div>'+exportBtn+'</div>';
 
@@ -447,7 +453,8 @@ function buildWa(phone){
 // ── Progress & ready logic ───────────────────────────────────────────────────
 function isBookingReady(n,phone){
   const p=phone||n.phone||'';
-  return !!(p && n.pax && n.food && n.boat && n.balance && n.contacted==='reminder' && n.comment);
+  const foodOk=n.food==='no'||((n.food_tapas||0)+(n.food_fish||0)+(n.food_meat||0))>0;
+  return !!(p && n.pax && foodOk && n.boat && n.balance && n.contacted==='reminder' && n.comment);
 }
 function calcProgress(bookings){
   if(!bookings.length)return{pct:0,ready:0,total:0,pending:[]};
@@ -459,7 +466,8 @@ function calcProgress(bookings){
     totalFields+=FIELDS.length;
     if(phone)filledFields++;
     if(n.pax)filledFields++;
-    if(n.food)filledFields++;
+    const foodFilled=n.food==='no'||((n.food_tapas||0)+(n.food_fish||0)+(n.food_meat||0))>0;
+    if(foodFilled)filledFields++;
     if(n.boat)filledFields++;
     if(n.balance)filledFields++;
     if(n.contacted==='reminder')filledFields++;
@@ -538,7 +546,20 @@ function renderCard(b){
   html+='<div class="notes-panel '+(allNotes[b.id]?'open':'')+'" id="notes-'+sid+'">';
   html+='<div class="notes-grid">';
   html+='<div class="note-field"><label>Personas confirmadas</label><input type="number" min="1" max="50" placeholder="'+esc(p.pax||'')+'" value="'+esc(n.pax||'')+'" id="n-pax-'+sid+'"/></div>';
-  html+='<div class="note-field"><label>Comida</label><select id="n-food-'+sid+'"><option value="" '+((!n.food)?'selected':'')+'>-- Sin confirmar --</option><option value="si" '+((n.food==='si')?'selected':'')+'>Si quieren</option><option value="no" '+((n.food==='no')?'selected':'')+'>No quieren</option><option value="pendiente" '+((n.food==='pendiente')?'selected':'')+'>Pendiente</option></select></div>';
+  html+='<div class="note-field"><label>Comida</label><select id="n-food-'+sid+'" onchange="toggleFoodFields(''+sid+'')">'
+  +'<option value="" '+((!n.food)?'selected':'')+'>-- Sin confirmar --</option>'
+  +'<option value="si" '+((n.food==='si')?'selected':'')+'>Si quieren</option>'
+  +'<option value="no" '+((n.food==='no')?'selected':'')+'>No quieren</option>'
+  +'<option value="pendiente" '+((n.food==='pendiente')?'selected':'')+'>Pendiente</option>'
+  +'</select></div>';
+  const foodVisible=(n.food==='si'||(!n.food&&((n.food_tapas||0)+(n.food_fish||0)+(n.food_meat||0))>0));
+  html+='<div class="note-field food-qty-fields" id="food-qty-'+sid+'" style="grid-column:1/-1;display:'+(foodVisible?'block':'none')+'">'
+  +'<label>Cantidades de comida</label>'
+  +'<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:6px">'
+  +'<div style="flex:1;min-width:100px"><div style="font-size:0.75rem;color:var(--muted);margin-bottom:4px">&#127860; Tapas</div><input type="number" min="0" max="50" placeholder="0" value="'+(n.food_tapas||'')+'" id="n-tapas-'+sid+'"/></div>'
+  +'<div style="flex:1;min-width:100px"><div style="font-size:0.75rem;color:var(--muted);margin-bottom:4px">&#128031; Fish Paella</div><input type="number" min="0" max="50" placeholder="0" value="'+(n.food_fish||'')+'" id="n-fish-'+sid+'"/></div>'
+  +'<div style="flex:1;min-width:100px"><div style="font-size:0.75rem;color:var(--muted);margin-bottom:4px">&#129385; Meat Paella</div><input type="number" min="0" max="50" placeholder="0" value="'+(n.food_meat||'')+'" id="n-meat-'+sid+'"/></div>'
+  +'</div></div>';
   html+='<div class="note-field"><label>Barco</label><select id="n-boat-'+sid+'"><option value="">-- Seleccionar --</option>'+boatOpts+'</select></div>';
   html+='<div class="note-field"><label>Patron</label><select id="n-skipper-'+sid+'"><option value="">-- Seleccionar --</option>'+skipOpts+'</select></div>';
   html+='<div class="note-field"><label>Balance (EUR)</label><input type="number" min="0" step="0.01" placeholder="0.00" value="'+esc(n.balance||'')+'" id="n-balance-'+sid+'"/></div>';
@@ -552,6 +573,12 @@ function renderCard(b){
 }
 
 // ── Interactions ──────────────────────────────────────────────────────────────
+function toggleFoodFields(sid){
+  const sel=document.getElementById('n-food-'+sid);
+  const qty=document.getElementById('food-qty-'+sid);
+  if(!sel||!qty)return;
+  qty.style.display=sel.value==='si'?'block':'none';
+}
 function toggleNotes(sid,eventId){
   document.getElementById('notes-'+sid)?.classList.toggle('open');
   markAsSeen(eventId);
@@ -579,6 +606,9 @@ async function saveNotes(sid,eventId){
   const fields={
     pax:document.getElementById('n-pax-'+sid)?.value||'',
     food:document.getElementById('n-food-'+sid)?.value||'',
+    food_tapas:parseInt(document.getElementById('n-tapas-'+sid)?.value)||0,
+    food_fish:parseInt(document.getElementById('n-fish-'+sid)?.value)||0,
+    food_meat:parseInt(document.getElementById('n-meat-'+sid)?.value)||0,
     boat:document.getElementById('n-boat-'+sid)?.value||'',
     skipper:document.getElementById('n-skipper-'+sid)?.value||'',
     balance:parseFloat(document.getElementById('n-balance-'+sid)?.value)||null,
