@@ -532,26 +532,23 @@ function buildWa(phone){
 
 // ── Progress & ready logic ───────────────────────────────────────────────────
 function isBookingReady(n,phone){
-  const p=phone||n.phone||'';
   const foodOk=n.food==='no'||((n.food_tapas||0)+(n.food_fish||0)+(n.food_meat||0))>0;
-  return !!(p && n.pax && foodOk && n.boat && n.balance && n.contacted==='reminder' && n.comment);
+  return !!(n.pax && foodOk && n.boat && n.balance && n.contacted==='reminder');
 }
 function calcProgress(bookings){
   if(!bookings.length)return{pct:0,ready:0,total:0,pending:[]};
-  const FIELDS=['phone','pax','food','boat','balance','contacted','comment'];
+  const FIELDS=['pax','food','boat','balance','contacted'];
   let totalFields=0,filledFields=0,readyCount=0,pendingNames=[];
   for(const b of bookings){
     const n=allNotes[b.id]||{};
     const phone=n.phone||b.parsed.phone||'';
     totalFields+=FIELDS.length;
-    if(phone)filledFields++;
     if(n.pax)filledFields++;
-    const foodFilled=n.food==='no'||((n.food_tapas||0)+(n.food_fish||0)+(n.food_meat||0))>0;
+    const foodFilled=n.food==='no'||((parseInt(n.food_tapas)||0)+(parseInt(n.food_fish)||0)+(parseInt(n.food_meat)||0))>0||n.food==='si';
     if(foodFilled)filledFields++;
     if(n.boat)filledFields++;
-    if(n.balance)filledFields++;
+    if(parseFloat(n.balance)||0)filledFields++;
     if(n.contacted==='reminder')filledFields++;
-    if(n.comment)filledFields++;
     if(isBookingReady(n,phone))readyCount++;
     else pendingNames.push(b.parsed.buyer||b.title);
   }
