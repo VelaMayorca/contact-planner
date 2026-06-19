@@ -26,6 +26,9 @@
   main{padding:20px 18px;max-width:960px;margin:0 auto;}
   /* Filters */
   .filter-bar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px;align-items:center;}
+  .search-bar{display:flex;gap:8px;margin-bottom:12px;}
+  .search-input{flex:1;font-family:'Inter',sans-serif;font-size:0.88rem;padding:9px 14px;border:1.5px solid var(--border);border-radius:10px;outline:none;color:var(--text);}
+  .search-input:focus{border-color:var(--blue);}
   .filter-label{font-size:0.75rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.05em;}
   .filter-chip{border:1.5px solid var(--border);background:var(--white);color:var(--muted);border-radius:20px;padding:5px 12px;font-size:0.78rem;font-weight:600;cursor:pointer;transition:all 0.15s;font-family:'Inter',sans-serif;}
   .filter-chip.active{background:var(--blue);color:#fff;border-color:var(--blue);}
@@ -63,6 +66,11 @@
   .day-count{font-size:0.72rem;font-weight:700;background:var(--teal);color:#fff;border-radius:12px;padding:2px 8px;}
   /* Cards */
   .booking-card{background:var(--white);border:1.5px solid var(--border);border-radius:14px;margin-bottom:12px;overflow:hidden;box-shadow:0 2px 12px rgba(10,33,64,0.07);transition:border-color 0.2s;}
+  .compact .booking-card{margin-bottom:6px;border-radius:10px;}
+  .compact .card-top{padding:9px 14px;}
+  .compact .booking-buyer,.compact .booking-email,.compact .phone-row,.compact .card-actions,.compact .notes-summary{display:none!important;}
+  .compact .booking-title{font-size:0.88rem;}
+  .compact .time-big{font-size:1rem;}
   .booking-card:hover{border-color:var(--blue);}
 
   .card-top{padding:14px 18px;display:flex;align-items:flex-start;gap:12px;}
@@ -125,6 +133,10 @@
   .btn-save.saved{background:var(--success);}
   /* Export modal */
   .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:200;display:flex;align-items:center;justify-content:center;padding:20px;}
+  .wa-template-modal .template-area{width:100%;font-family:'Inter',sans-serif;font-size:0.88rem;padding:10px;border:1.5px solid var(--border);border-radius:8px;min-height:100px;resize:vertical;outline:none;}
+  .wa-template-modal .template-area:focus{border-color:var(--blue);}
+  .template-vars{font-size:0.75rem;color:var(--muted);margin:8px 0;line-height:1.8;}
+  .template-vars code{background:#f0f4f8;padding:1px 5px;border-radius:4px;font-family:monospace;}
   .modal{background:var(--white);border-radius:16px;padding:24px;max-width:600px;width:100%;max-height:80vh;overflow-y:auto;box-shadow:0 8px 40px rgba(0,0,0,0.3);}
   .modal h2{font-family:'DM Serif Display',serif;font-size:1.2rem;margin-bottom:14px;color:var(--text);}
   .export-text{background:#1a1a2e;color:#e0e0e0;font-family:monospace;font-size:0.85rem;padding:14px;border-radius:10px;white-space:pre-wrap;line-height:1.7;margin-bottom:14px;}
@@ -138,7 +150,7 @@
 </head>
 <body>
 <header>
-  <div class="logo">&#9975; <span>Vela Tours</span></div>
+  <div class="logo">&#9981;&#65039; <span>Vela Tours</span></div>
   <div class="header-right">
     <div class="sync-info" id="syncInfo"></div>
     <div class="today-badge" id="todayBadge"></div>
@@ -154,7 +166,7 @@
 </div>
 <main>
   <div id="loginScreen" style="display:none">
-    <div class="login-icon">&#9975;</div>
+    <div class="login-icon">&#9981;&#65039;</div>
     <div class="login-title">Vela Tours &middot; Admin</div>
     <div class="login-sub">Conecta tu Google Calendar para sincronizar las reservas con el equipo.</div>
     <button class="btn-google" onclick="startAuth()">
@@ -168,6 +180,20 @@
     <div id="view-history" style="display:none"></div>
   </div>
 </main>
+
+<!-- WA Template Modal -->
+<div class="modal-overlay wa-template-modal" id="waTemplateModal" style="display:none" onclick="if(event.target===this)closeWaTemplate()">
+  <div class="modal">
+    <h2>&#128172; Mensaje de WhatsApp</h2>
+    <div class="template-vars">Variables: <code>{nombre}</code> <code>{hora}</code> <code>{barco}</code> <code>{pax}</code> <code>{patron}</code></div>
+    <textarea class="template-area" id="waTemplateText"></textarea>
+    <div style="margin-top:12px;display:flex;gap:8px;justify-content:flex-end">
+      <button class="btn" style="background:var(--border);color:var(--text)" onclick="closeWaTemplate()">Cancelar</button>
+      <button class="btn btn-blue" onclick="saveWaTemplate()">Guardar plantilla</button>
+      <a id="waTemplateSendLink" href="#" target="_blank"><button class="btn btn-wa" style="background:#25d366;color:#fff">&#128172; Abrir WhatsApp</button></a>
+    </div>
+  </div>
+</div>
 
 <div class="modal-overlay" id="exportModal" style="display:none" onclick="if(event.target===this)closeExport()">
   <div class="modal">
@@ -300,6 +326,9 @@ async function loadFromSupabase(){
 
 // ── State ─────────────────────────────────────────────────────────────────────
 let allBookings=[],allNotes={};
+let searchQuery='';
+let isCompact=false;
+const DEFAULT_WA_TEMPLATE='Hola {nombre}! Te escribimos desde Vela Tours para confirmar tu reserva de manana a las {hora} en el {barco} para {pax} personas. Tu patron sera {patron}. Cualquier duda estamos aqui!';
 let activeBoatFilter='all', activeSkipperFilter='all';
 
 
@@ -313,16 +342,22 @@ function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').
 function filterBookings(bookings){
   return bookings.filter(b=>{
     const n=allNotes[b.id]||{};
-    const boatOk=activeBoatFilter==='all'||(n.boat||'')=== activeBoatFilter;
-    const skipperOk=activeSkipperFilter==='all'||(n.skipper||'')=== activeSkipperFilter;
-    return boatOk&&skipperOk;
+    const boatOk=activeBoatFilter==='all'||(n.boat||'')===activeBoatFilter;
+    const skipperOk=activeSkipperFilter==='all'||(n.skipper||'')===activeSkipperFilter;
+    const q=searchQuery.toLowerCase();
+    const searchOk=!q||(b.parsed.buyer||'').toLowerCase().includes(q)||(n.phone||b.parsed.phone||'').includes(q)||(b.title||'').toLowerCase().includes(q)||(b.parsed.email||'').toLowerCase().includes(q);
+    return boatOk&&skipperOk&&searchOk;
+  }).sort((a,b)=>{
+    // Sort chronologically
+    if(!a.start)return 1;if(!b.start)return -1;
+    return new Date(a.start)-new Date(b.start);
   });
 }
 
 // ── Render helpers ────────────────────────────────────────────────────────────
 function renderFilterBar(containerId){
-  const newCount=allBookings.filter(b=>hasNewNotes(b.id)).length;
-  let html='<div class="filter-bar">';
+  let html='<div class="search-bar"><input class="search-input" placeholder="&#128269; Buscar por nombre, teléfono o email..." value="'+esc(searchQuery)+'" oninput="setSearch(this.value)"/><button class="btn '+(isCompact?'btn-blue':'btn btn-deep')+'" onclick="toggleCompact()" style="white-space:nowrap;padding:8px 12px">'+(isCompact?'&#8853; Expandir':'&#8851; Compacto')+'</button></div>';
+  html+='<div class="filter-bar">';
   html+='<span class="filter-label">Barco:</span>';
   html+='<button class="filter-chip '+(activeBoatFilter==='all'?'active':'')+'" onclick="setBoatFilter(\'all\')">Todos</button>';
   BOATS.forEach(b=>{html+='<button class="filter-chip '+(activeBoatFilter===b?'active':'')+'" onclick="setBoatFilter(\''+b+'\')">'+b+'</button>';});
@@ -331,7 +366,7 @@ function renderFilterBar(containerId){
   html+='<option value="all" '+(activeSkipperFilter==='all'?'selected':'')+'>Todos</option>';
   SKIPPERS.forEach(s=>{html+='<option value="'+s+'" '+(activeSkipperFilter===s?'selected':'')+'>'+s+'</option>';});
   html+='</select>';
-  if(newCount>0&&!isAdmin)html+='<span style="margin-left:8px;font-size:0.8rem;color:var(--danger);font-weight:600">&#128308; '+newCount+' notas nuevas</span>';
+
   html+='</div>';
   return html;
 }
@@ -395,7 +430,7 @@ function renderView(bookings,cid,isTomorrow){
     const{weekday,rest}=formatDateLabel(date);
     const dayPax=dayB.reduce((s,b)=>s+(parseInt(b.parsed.pax)||0),0);
     const dayBalance=dayB.reduce((s,b)=>s+(parseFloat(allNotes[b.id]?.balance)||0),0);
-    html+='<div class="day-section"><div class="day-header"><div class="day-label">'+rest+'<span class="weekday">'+weekday+'</span></div>';
+    html+='<div class="day-section '+(isCompact?'compact':'')+'"><div class="day-header"><div class="day-label">'+rest+'<span class="weekday">'+weekday+'</span></div>';
     html+='<div class="day-count">'+dayB.length+' tours &middot; '+dayPax+' pax'+(dayBalance>0?' &middot; '+dayBalance.toLocaleString('es-ES')+'&#8364;':'')+'</div></div>';
     for(const b of dayB)html+=renderCard(b);
     html+='</div>';
@@ -597,6 +632,7 @@ function renderCard(b){
   if(phone){
     html+='<button class="btn-sm btn-copy" onclick="copyText(\''+esc(phone)+'\',this)">&#128203; Copiar</button>';
     html+='<a href="https://wa.me/'+waNum+'" target="_blank"><button class="btn-sm btn-wa">&#128172; WhatsApp</button></a>';
+    html+='<button class="btn-sm" style="background:#dcfce7;color:#16a34a;border:1px solid #16a34a" onclick="openWaTemplate(''+esc(b.id)+'',event)">&#128172; Reminder</button>';
   }
   html+='<button class="btn-sm btn-notes" onclick="toggleNotes(\''+sid+'\',\''+esc(b.id)+'\')">&#128221; '+(allNotes[b.id]?'Notas':'Notas')+'</button>';
   html+='</div>';
@@ -634,6 +670,34 @@ function renderCard(b){
 }
 
 // ── Interactions ──────────────────────────────────────────────────────────────
+function setSearch(q){searchQuery=q;renderTomorrow();renderWeek();}
+function toggleCompact(){isCompact=!isCompact;renderTomorrow();renderWeek();}
+
+function openWaTemplate(eventId,ev){
+  ev.stopPropagation();
+  const b=allBookings.find(x=>x.id===eventId)||{};
+  const n=allNotes[eventId]||{};
+  const phone=n.phone||b.parsed?.phone||'';
+  const waNum=phone?buildWa(phone):'';
+  const tmpl=localStorage.getItem('vt_wa_template')||DEFAULT_WA_TEMPLATE;
+  const nombre=(b.parsed?.buyer||'').split(' ')[0]||'cliente';
+  const hora=formatTime(b.start);
+  const barco=n.boat||'--';
+  const pax=n.pax||b.parsed?.pax||'--';
+  const patron=n.skipper||'--';
+  const msg=tmpl.replace(/{nombre}/g,nombre).replace(/{hora}/g,hora).replace(/{barco}/g,barco).replace(/{pax}/g,pax).replace(/{patron}/g,patron);
+  document.getElementById('waTemplateText').value=tmpl;
+  const link=document.getElementById('waTemplateSendLink');
+  link.href='https://wa.me/'+waNum+'?text='+encodeURIComponent(msg);
+  document.getElementById('waTemplateModal').style.display='flex';
+}
+function closeWaTemplate(){document.getElementById('waTemplateModal').style.display='none';}
+function saveWaTemplate(){
+  const tmpl=document.getElementById('waTemplateText').value;
+  localStorage.setItem('vt_wa_template',tmpl);
+  closeWaTemplate();
+}
+
 function toggleFoodFields(el){
   const card=el.closest('.booking-card');
   if(!card)return;
