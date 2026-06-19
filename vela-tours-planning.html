@@ -436,9 +436,9 @@ const CDB=[{cc:'+34',flag:'\uD83C\uDDEA\uD83C\uDDF8',local:[9]},{cc:'+44',flag:'
   {cc:'+33',flag:'\uD83C\uDDEB\uD83C\uDDF7',local:[9]},{cc:'+1',flag:'\uD83C\uDDFA\uD83C\uDDF8',local:[10]},{cc:'+31',flag:'\uD83C\uDDF3\uD83C\uDDF1',local:[9]},
   {cc:'+39',flag:'\uD83C\uDDEE\uD83C\uDDF9',local:[9,10]},{cc:'+351',flag:'\uD83C\uDDF5\uD83C\uDDF9',local:[9]},{cc:'+55',flag:'\uD83C\uDDE7\uD83C\uDDF7',local:[11]},{cc:'+61',flag:'\uD83C\uDDE6\uD83C\uDDFA',local:[9]}];
 const BOOST={'+34':2.5,'+44':2.0,'+49':1.8,'+33':1.5,'+1':1.5,'+31':1.4};
-function hasPrefix(p){const n=p.replace(/[\s\-(). ]/g,'');return n.startsWith('+')||n.startsWith('00');}
+function hasPrefix(p){const n=p.replace(/[^0-9+]/g,'');return n.startsWith('+')||n.startsWith('00');}
 function guessPrefix(phone){
-  const n=phone.replace(/[\s\-(). ]/g,'');if(hasPrefix(phone))return null;
+  const n=phone.replace(/[^0-9+]/g,'');if(hasPrefix(phone))return null;
   let best=null,bestS=0;
   for(const e of CDB){let s=5;
     if(e.local.includes(n.length))s+=30;
@@ -453,7 +453,7 @@ function guessPrefix(phone){
 }
 function getFlag(phone){
   if(!phone)return '';
-  const n=phone.replace(/[\s\-(). ]/g,'');
+  const n=phone.replace(/[^0-9+]/g,'');
   if(n.startsWith('+')){
     // Try longest match first (3 digits, then 2, then 1)
     for(const len of[3,2,1]){
@@ -471,7 +471,7 @@ function getFlag(phone){
   const g=guessPrefix(phone);return g?g.flag:'';
 }
 function buildWa(phone){
-  let n=phone.replace(/[\s\-(). ]/g,'');
+  let n=phone.replace(/[^0-9+]/g,'');
   if(n.startsWith('00'))n='+'+n.slice(2);
   if(!n.startsWith('+')){const g=guessPrefix(phone);if(g){let l=n;if(['+44','+31','+49','+33'].includes(g.cc)&&n.startsWith('0'))l=n.slice(1);n=g.cc.replace('+','')+l;}}
   else n=n.slice(1);return n;
