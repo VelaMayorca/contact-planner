@@ -175,6 +175,7 @@
   .payment-method-btn:hover{border-color:var(--blue);}
   .payment-method-btn.active.method-tpv_bbva{background:#1464A5;border-color:#1464A5;color:#fff;}
   .payment-method-btn.active.method-tpv_santander{background:#EC0000;border-color:#EC0000;color:#fff;}
+  .payment-method-btn.active.method-tpv_btp{background:#7c3aed;border-color:#7c3aed;color:#fff;}
   .payment-method-btn.active.method-cash{background:var(--success);border-color:var(--success);color:#fff;}
   .cash-delivered-check{display:flex;align-items:center;gap:8px;margin-top:12px;font-size:0.88rem;font-weight:600;color:var(--text);cursor:pointer;}
   .cash-delivered-check input[type="checkbox"]{width:18px;height:18px;cursor:pointer;accent-color:var(--success);}
@@ -879,6 +880,7 @@ async function renderPayments(){
     const totalBalance=sorted.reduce((s,b)=>s+(parseFloat(allNotes[b.id]?.balance)||0),0);
     const bbva=sorted.filter(b=>allNotes[b.id]?.payment_method==='tpv_bbva').reduce((s,b)=>s+(parseFloat(allNotes[b.id]?.balance)||0),0);
     const santander=sorted.filter(b=>allNotes[b.id]?.payment_method==='tpv_santander').reduce((s,b)=>s+(parseFloat(allNotes[b.id]?.balance)||0),0);
+    const btp=sorted.filter(b=>allNotes[b.id]?.payment_method==='tpv_btp').reduce((s,b)=>s+(parseFloat(allNotes[b.id]?.balance)||0),0);
     const cash=sorted.filter(b=>allNotes[b.id]?.payment_method==='cash').reduce((s,b)=>s+(parseFloat(allNotes[b.id]?.balance)||0),0);
     const cashPending=sorted.filter(b=>allNotes[b.id]?.payment_method==='cash'&&!allNotes[b.id]?.cash_delivered).length;
 
@@ -887,6 +889,7 @@ async function renderPayments(){
     html+='<div class="sum-item"><div class="sum-num sum-balance">'+totalBalance.toLocaleString('es-ES')+'&#8364;</div><div class="sum-label">Total</div></div>';
     if(bbva>0)html+='<div class="sum-item"><div class="sum-num" style="color:#1464A5">'+bbva.toLocaleString('es-ES')+'&#8364;</div><div class="sum-label">TPV BBVA</div></div>';
     if(santander>0)html+='<div class="sum-item"><div class="sum-num" style="color:#EC0000">'+santander.toLocaleString('es-ES')+'&#8364;</div><div class="sum-label">TPV Santander</div></div>';
+    if(btp>0)html+='<div class="sum-item"><div class="sum-num" style="color:#7c3aed">'+btp.toLocaleString('es-ES')+'&#8364;</div><div class="sum-label">TPV BTP</div></div>';
     if(cash>0)html+='<div class="sum-item"><div class="sum-num" style="color:var(--success)">'+cash.toLocaleString('es-ES')+'&#8364;</div><div class="sum-label">Cash</div></div>';
     if(cashPending>0)html+='<div class="sum-item"><div class="sum-num" style="color:var(--danger)">'+cashPending+'</div><div class="sum-label">Cash pendiente</div></div>';
     html+='</div></div>';
@@ -919,11 +922,13 @@ function renderPaymentCard(b){
   html+='</div></div>';
   html+='</div>';
 
-  // Payment method selector
+  // Payment method selector - RunWild and Jaleo only have Cash + TPV BTP
+  const isBtpBoat=boat==='RunWild'||boat==='Jaleo';
+  const methodOptions=isBtpBoat?['tpv_btp','cash']:['tpv_bbva','tpv_santander','cash'];
   html+='<div class="payment-controls">';
   html+='<div class="payment-method-row">';
-  ['tpv_bbva','tpv_santander','cash'].forEach(m=>{
-    const labels={tpv_bbva:'&#128179; TPV BBVA',tpv_santander:'&#128179; TPV Santander',cash:'&#128181; Cash'};
+  methodOptions.forEach(m=>{
+    const labels={tpv_bbva:'&#128179; TPV BBVA',tpv_santander:'&#128179; TPV Santander',tpv_btp:'&#128179; TPV BTP',cash:'&#128181; Cash'};
     html+='<button class="payment-method-btn '+(method===m?'active method-'+m:'')+'" onclick="setPaymentMethod(\''+sid+'\',\''+esc(b.id)+'\',\''+m+'\')">'+labels[m]+'</button>';
   });
   html+='</div>';
