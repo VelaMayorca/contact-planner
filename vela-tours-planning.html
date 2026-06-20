@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Vela Tours · Planning</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect x='3' y='4' width='18' height='17' rx='2' fill='%232d7db3'/%3E%3Crect x='3' y='4' width='18' height='5' rx='2' fill='%2308213a'/%3E%3Cline x1='7' y1='2' x2='7' y2='6' stroke='%2308213a' stroke-width='2' stroke-linecap='round'/%3E%3Cline x1='17' y1='2' x2='17' y2='6' stroke='%2308213a' stroke-width='2' stroke-linecap='round'/%3E%3Crect x='6' y='11' width='3' height='3' fill='%234abfb0'/%3E%3Crect x='10.5' y='11' width='3' height='3' fill='%23faf7f2'/%3E%3Crect x='15' y='11' width='3' height='3' fill='%234abfb0'/%3E%3Crect x='6' y='15' width='3' height='3' fill='%23faf7f2'/%3E%3Crect x='10.5' y='15' width='3' height='3' fill='%234abfb0'/%3E%3C/svg%3E">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Inter:wght@400;500;600;700&display=swap');
@@ -142,15 +143,35 @@
   .export-text{background:#1a1a2e;color:#e0e0e0;font-family:monospace;font-size:0.85rem;padding:14px;border-radius:10px;white-space:pre-wrap;line-height:1.7;margin-bottom:14px;}
   .modal-actions{display:flex;gap:10px;justify-content:flex-end;}
   /* Date nav for history */
-  .date-nav{display:flex;align-items:center;gap:12px;margin-bottom:16px;}
+  .date-nav{display:flex;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap;}
   .date-nav button{background:var(--white);border:1.5px solid var(--border);border-radius:8px;padding:6px 12px;font-family:'Inter',sans-serif;font-size:0.82rem;cursor:pointer;color:var(--text);}
   .date-nav button:hover{border-color:var(--blue);color:var(--blue);}
   .date-nav .current-date{font-family:'DM Serif Display',serif;font-size:1rem;color:var(--text);min-width:160px;text-align:center;}
+  .date-picker-input{font-family:'Inter',sans-serif;font-size:0.85rem;padding:6px 10px;border:1.5px solid var(--border);border-radius:8px;color:var(--text);background:var(--white);outline:none;cursor:pointer;}
+  .date-picker-input:focus{border-color:var(--blue);}
+  /* Stats tab */
+  .stats-controls{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:20px;background:var(--white);border:1.5px solid var(--border);border-radius:12px;padding:14px 18px;}
+  .stats-controls label{font-size:0.78rem;font-weight:600;color:var(--muted);}
+  .stats-controls input[type="date"]{font-family:'Inter',sans-serif;font-size:0.85rem;padding:6px 10px;border:1.5px solid var(--border);border-radius:8px;color:var(--text);outline:none;}
+  .stats-controls input[type="date"]:focus{border-color:var(--blue);}
+  .stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px;}
+  @media(max-width:700px){.stats-grid{grid-template-columns:repeat(2,1fr);}}
+  .stat-card{background:var(--white);border:1.5px solid var(--border);border-radius:14px;padding:18px;text-align:center;box-shadow:0 2px 8px rgba(10,33,64,0.07);}
+  .stat-icon{font-size:1.4rem;margin-bottom:6px;}
+  .stat-num{font-family:'DM Serif Display',serif;font-size:1.6rem;color:var(--blue);line-height:1.1;}
+  .stat-label{font-size:0.72rem;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:0.04em;margin-top:4px;}
+  .stats-section{background:var(--white);border:1.5px solid var(--border);border-radius:14px;padding:18px 20px;margin-bottom:16px;}
+  .stats-section h3{font-family:'DM Serif Display',serif;font-size:1.05rem;color:var(--text);margin-bottom:12px;}
+  .stats-table{display:flex;flex-direction:column;gap:2px;}
+  .stats-row{display:flex;align-items:center;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--sand);font-size:0.85rem;gap:10px;}
+  .stats-row:last-child{border-bottom:none;}
+  .stats-row-label{font-weight:600;color:var(--text);flex:1;}
+  .stats-row-balance{color:var(--success);font-weight:700;}
 </style>
 </head>
 <body>
 <header>
-  <div class="logo">&#9981;&#65039; <span>Vela Tours</span></div>
+  <div class="logo">&#128198; <span>Vela Tours</span></div>
   <div class="header-right">
     <div class="sync-info" id="syncInfo"></div>
     <div class="today-badge" id="todayBadge"></div>
@@ -160,13 +181,15 @@
   </div>
 </header>
 <div class="tabs" id="tabBar" style="display:none">
+  <div class="tab" onclick="switchTab('today')" id="tab-today">&#128198; Hoy</div>
   <div class="tab active" onclick="switchTab('tomorrow')" id="tab-tomorrow">&#128197; Manana</div>
   <div class="tab" onclick="switchTab('week')" id="tab-week">&#128197; Semana</div>
   <div class="tab" onclick="switchTab('history')" id="tab-history">&#128337; Historico</div>
+  <div class="tab" onclick="switchTab('stats')" id="tab-stats">&#128202; Estadisticas</div>
 </div>
 <main>
   <div id="loginScreen" style="display:none">
-    <div class="login-icon">&#9981;&#65039;</div>
+    <div class="login-icon">&#128198;</div>
     <div class="login-title">Vela Tours &middot; Admin</div>
     <div class="login-sub">Conecta tu Google Calendar para sincronizar las reservas con el equipo.</div>
     <button class="btn-google" onclick="startAuth()">
@@ -175,9 +198,11 @@
     </button>
   </div>
   <div id="appContent" style="display:none">
+    <div id="view-today" style="display:none"></div>
     <div id="view-tomorrow"></div>
     <div id="view-week" style="display:none"></div>
     <div id="view-history" style="display:none"></div>
+    <div id="view-stats" style="display:none"></div>
   </div>
 </main>
 
@@ -270,7 +295,7 @@ async function handleCallback(code){
   showLoading('Autenticando...');
   const r=await fetch('https://oauth2.googleapis.com/token',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({code,client_id:CLIENT_ID,client_secret:CLIENT_SECRET,redirect_uri:getRedirectUri(),grant_type:'authorization_code',code_verifier:ver})});
   const d=await r.json();
-  if(d.access_token){saveToken(d.access_token,d.expires_in||3600);window.history.replaceState({},'',window.location.pathname);showApp(true);await syncCalendar();}
+  if(d.access_token){saveToken(d.access_token,d.expires_in||3600);window.history.replaceState({},'',window.location.pathname);showApp(true);await syncCalendar();startAutoSync();}
   else showError('Error auth: '+(d.error_description||d.error||'desconocido'));
 }
 function logout(){clearToken();localStorage.removeItem('vt_admin');showLogin();}
@@ -287,21 +312,27 @@ async function fetchGoogleEvents(calId,tMin,tMax){
   const r=await fetch('https://www.googleapis.com/calendar/v3/calendars/'+encodeURIComponent(calId)+'/events?'+p,{headers:{Authorization:'Bearer '+accessToken}});
   const d=await r.json();if(d.error)throw new Error(d.error.message);return d.items||[];
 }
-async function syncCalendar(){
-  const btn=document.getElementById('btnSync');if(btn){btn.disabled=true;btn.innerHTML='&#8645;...';}
-  showLoading('Sincronizando calendarios...');
+async function syncCalendar(silent){
+  const btn=document.getElementById('btnSync');
+  if(!silent&&btn){btn.disabled=true;btn.innerHTML='&#8645;...';}
+  if(!silent)showLoading('Sincronizando calendarios...');
   try{
     const calIds=await getCalendarIds();
-    const tom=new Date();tom.setDate(tom.getDate()+1);
-    const tStart=new Date(tom);tStart.setHours(0,0,0,0);
-    const wEnd=new Date(tStart);wEnd.setDate(tStart.getDate()+13);wEnd.setHours(23,59,59,999); // 2 weeks
-    const allEventsArr=await Promise.all(calIds.map(id=>fetchGoogleEvents(id,tStart,wEnd)));
+    const today=new Date();today.setHours(0,0,0,0);
+    const wEnd=new Date(today);wEnd.setDate(today.getDate()+14);wEnd.setHours(23,59,59,999); // 2 weeks from today
+    const allEventsArr=await Promise.all(calIds.map(id=>fetchGoogleEvents(id,today,wEnd)));
     const events=allEventsArr.flat();
     const bookings=events.map(parseEvent);
     await saveEventsToSupabase(bookings);
     await loadFromSupabase();
-  }catch(err){showError('Error sync: '+err.message);}
-  if(btn){btn.disabled=false;btn.innerHTML='&#8645; Sync';}
+  }catch(err){if(!silent)showError('Error sync: '+err.message);}
+  if(!silent&&btn){btn.disabled=false;btn.innerHTML='&#8645; Sync';}
+}
+
+let autoSyncInterval=null;
+function startAutoSync(){
+  if(autoSyncInterval)clearInterval(autoSyncInterval);
+  autoSyncInterval=setInterval(()=>{ if(isAdmin&&accessToken)syncCalendar(true); }, 5*60*1000); // every 5 min
 }
 
 // ── Load from Supabase ────────────────────────────────────────────────────────
@@ -309,16 +340,19 @@ async function loadFromSupabase(){
   const btn=document.getElementById('btnRefresh');if(btn){btn.disabled=true;}
   showLoading('Cargando reservas...');
   try{
+    const today=new Date();
+    const todayStr=toDateStr(today);
     const tom=new Date();tom.setDate(tom.getDate()+1);
     const tStr=toDateStr(tom);
     const wEnd=new Date(tom);wEnd.setDate(tom.getDate()+6);
     const wStr=toDateStr(wEnd);
-    const[events,notesMap]=await Promise.all([loadEventsFromSupabase(tStr,wStr),loadAllNotes()]);
+    const[events,notesMap]=await Promise.all([loadEventsFromSupabase(todayStr,wStr),loadAllNotes()]);
     allNotes=notesMap;allBookings=events;
 
+    renderToday();
     renderTomorrow();
     renderWeek();
-    if(!events.length){['tomorrow','week'].forEach(v=>{document.getElementById('view-'+v).innerHTML='<div class="state-screen"><div class="icon">&#127754;</div><h2>Sin reservas</h2><p>'+(isAdmin?'Pulsa Sync para cargar el calendario.':'Sin reservas por ahora.')+'</p></div>';});}
+    if(!events.length){['today','tomorrow','week'].forEach(v=>{document.getElementById('view-'+v).innerHTML='<div class="state-screen"><div class="icon">&#127754;</div><h2>Sin reservas</h2><p>'+(isAdmin?'Pulsa Sync para cargar el calendario.':'Sin reservas por ahora.')+'</p></div>';});}
   }catch(err){showError('Error: '+err.message);}
   if(btn){btn.disabled=false;}
   updateSyncInfo();
@@ -371,9 +405,15 @@ function renderFilterBar(containerId){
   return html;
 }
 
-function setBoatFilter(boat){activeBoatFilter=boat;renderTomorrow();renderWeek();}
-function setSkipperFilter(skipper){activeSkipperFilter=skipper;renderTomorrow();renderWeek();}
+function setBoatFilter(boat){activeBoatFilter=boat;renderToday();renderTomorrow();renderWeek();}
+function setSkipperFilter(skipper){activeSkipperFilter=skipper;renderToday();renderTomorrow();renderWeek();}
 
+function renderToday(){
+  const today=new Date();
+  const todayStr=toDateStr(today);
+  const bookings=filterBookings(allBookings.filter(b=>b.date===todayStr));
+  renderView(bookings,'view-today',false,true);
+}
 function renderTomorrow(){
   const tom=new Date();tom.setDate(tom.getDate()+1);
   const tStr=toDateStr(tom);
@@ -385,7 +425,7 @@ function renderWeek(){
   renderView(bookings,'view-week',false);
 }
 
-function renderView(bookings,cid,isTomorrow){
+function renderView(bookings,cid,isTomorrow,isToday){
   const el=document.getElementById(cid);
   const filters=renderFilterBar(cid);
   if(!bookings.length){
@@ -763,20 +803,26 @@ async function saveNotes(sid,eventId){
 }
 function copyText(text,btn){navigator.clipboard.writeText(text).then(()=>{btn.textContent='Copiado';btn.classList.add('done');setTimeout(()=>{btn.textContent='Copiar';btn.classList.remove('done');},2000);});}
 
-// ── History tab ───────────────────────────────────────────────────────────────
+// ── History tab (with calendar picker) ─────────────────────────────────────────
 let historyDate=new Date();
 historyDate.setDate(historyDate.getDate()-1); // yesterday default
+
+function buildDateNav(dStr){
+  const{weekday,rest}=formatDateLabel(dStr);
+  return '<div class="date-nav"><button onclick="changeHistoryDate(-1)">&#8592;</button>'
+    +'<input type="date" class="date-picker-input" id="historyDatePicker" value="'+dStr+'" onchange="setHistoryDate(this.value)"/>'
+    +'<div class="current-date">'+rest+' &middot; '+weekday+'</div>'
+    +'<button onclick="changeHistoryDate(1)">&#8594;</button></div>';
+}
 
 async function renderHistory(){
   const el=document.getElementById('view-history');
   const dStr=toDateStr(historyDate);
-  const{weekday,rest}=formatDateLabel(dStr);
-  el.innerHTML='<div class="date-nav"><button onclick="changeHistoryDate(-1)">&#8592; Anterior</button><div class="current-date">'+rest+' &middot; '+weekday+'</div><button onclick="changeHistoryDate(1)">Siguiente &#8594;</button></div><div class="state-screen"><div class="icon spinning">&#8635;</div><h2>Cargando...</h2></div>';
+  el.innerHTML=buildDateNav(dStr)+'<div class="state-screen"><div class="icon spinning">&#8635;</div><h2>Cargando...</h2></div>';
   try{
     const[events,notesMap]=await Promise.all([loadEventsFromSupabase(dStr,dStr),loadAllNotes()]);
     allNotes={...allNotes,...notesMap};
-    const{weekday:wd,rest:r}=formatDateLabel(dStr);
-    let html='<div class="date-nav"><button onclick="changeHistoryDate(-1)">&#8592; Anterior</button><div class="current-date">'+r+' &middot; '+wd+'</div><button onclick="changeHistoryDate(1)">Siguiente &#8594;</button></div>';
+    let html=buildDateNav(dStr);
     if(!events.length){html+='<div class="state-screen"><div class="icon">&#127754;</div><h2>Sin reservas</h2><p>No hubo tours este dia.</p></div>';}
     else{
       const totalPax=events.reduce((s,b)=>s+(parseInt(b.parsed.pax)||0),0);
@@ -788,6 +834,91 @@ async function renderHistory(){
   }catch(err){el.innerHTML='<div class="state-screen"><div class="icon">&#9888;</div><h2>Error</h2><p>'+esc(err.message)+'</p></div>';}
 }
 function changeHistoryDate(dir){historyDate.setDate(historyDate.getDate()+dir);renderHistory();}
+function setHistoryDate(dateStr){historyDate=new Date(dateStr+'T12:00:00');renderHistory();}
+
+// ── Stats tab ─────────────────────────────────────────────────────────────────
+let statsRangeStart=null, statsRangeEnd=null;
+function getDefaultStatsRange(){
+  const end=new Date();
+  const start=new Date();start.setDate(start.getDate()-30);
+  return{start:toDateStr(start),end:toDateStr(end)};
+}
+async function renderStats(){
+  const el=document.getElementById('view-stats');
+  if(!statsRangeStart||!statsRangeEnd){const d=getDefaultStatsRange();statsRangeStart=d.start;statsRangeEnd=d.end;}
+  el.innerHTML=buildStatsControls()+'<div class="state-screen"><div class="icon spinning">&#8635;</div><h2>Cargando estadisticas...</h2></div>';
+  try{
+    const[events,notesMap]=await Promise.all([loadEventsFromSupabase(statsRangeStart,statsRangeEnd),loadAllNotes()]);
+    const notes=notesMap;
+    let html=buildStatsControls();
+
+    if(!events.length){
+      html+='<div class="state-screen"><div class="icon">&#128202;</div><h2>Sin datos</h2><p>No hay reservas en este periodo.</p></div>';
+      el.innerHTML=html;
+      return;
+    }
+
+    const totalPax=events.reduce((s,b)=>s+(parseInt(b.parsed.pax)||0),0);
+    const totalBalance=events.reduce((s,b)=>s+(parseFloat(notes[b.id]?.balance)||0),0);
+    const totalTapas=events.reduce((s,b)=>s+(parseInt(notes[b.id]?.food_tapas)||0),0);
+    const totalFish=events.reduce((s,b)=>s+(parseInt(notes[b.id]?.food_fish)||0),0);
+    const totalMeat=events.reduce((s,b)=>s+(parseInt(notes[b.id]?.food_meat)||0),0);
+
+    // Overall summary
+    html+='<div class="stats-grid">';
+    html+=statCard(events.length,'Tours totales','&#9981;');
+    html+=statCard(totalPax,'Personas','&#128101;');
+    html+=statCard(totalBalance.toLocaleString('es-ES')+'&#8364;','Balance total','&#128176;');
+    html+=statCard(totalTapas+totalFish+totalMeat,'Comidas servidas','&#127860;');
+    html+='</div>';
+
+    // By boat
+    const byBoat={};
+    for(const b of events){const boat=notes[b.id]?.boat||'Sin asignar';if(!byBoat[boat])byBoat[boat]={count:0,pax:0,balance:0};byBoat[boat].count++;byBoat[boat].pax+=parseInt(b.parsed.pax)||0;byBoat[boat].balance+=parseFloat(notes[b.id]?.balance)||0;}
+    html+='<div class="stats-section"><h3>Por barco</h3><div class="stats-table">';
+    for(const[boat,d]of Object.entries(byBoat).sort((a,b)=>b[1].count-a[1].count)){
+      html+='<div class="stats-row"><span class="stats-row-label">&#128674; '+esc(boat)+'</span><span>'+d.count+' tours</span><span>'+d.pax+' pax</span><span class="stats-row-balance">'+d.balance.toLocaleString('es-ES')+'&#8364;</span></div>';
+    }
+    html+='</div></div>';
+
+    // By skipper
+    const bySkipper={};
+    for(const b of events){const sk=notes[b.id]?.skipper||'Sin asignar';if(!bySkipper[sk])bySkipper[sk]={count:0,pax:0};bySkipper[sk].count++;bySkipper[sk].pax+=parseInt(b.parsed.pax)||0;}
+    html+='<div class="stats-section"><h3>Por patron</h3><div class="stats-table">';
+    for(const[sk,d]of Object.entries(bySkipper).sort((a,b)=>b[1].count-a[1].count)){
+      html+='<div class="stats-row"><span class="stats-row-label">&#128081; '+esc(sk)+'</span><span>'+d.count+' tours</span><span>'+d.pax+' pax</span></div>';
+    }
+    html+='</div></div>';
+
+    // Weekly breakdown
+    const byWeek={};
+    for(const b of events){
+      const d=new Date(b.date+'T12:00:00');
+      const weekStart=new Date(d);weekStart.setDate(d.getDate()-d.getDay()+1);
+      const wKey=toDateStr(weekStart);
+      if(!byWeek[wKey])byWeek[wKey]={count:0,pax:0,balance:0};
+      byWeek[wKey].count++;byWeek[wKey].pax+=parseInt(b.parsed.pax)||0;byWeek[wKey].balance+=parseFloat(notes[b.id]?.balance)||0;
+    }
+    html+='<div class="stats-section"><h3>Por semana</h3><div class="stats-table">';
+    for(const[wk,d]of Object.entries(byWeek).sort((a,b)=>a[0]<b[0]?1:-1)){
+      const{rest}=formatDateLabel(wk);
+      html+='<div class="stats-row"><span class="stats-row-label">&#128197; Semana del '+rest+'</span><span>'+d.count+' tours</span><span>'+d.pax+' pax</span><span class="stats-row-balance">'+d.balance.toLocaleString('es-ES')+'&#8364;</span></div>';
+    }
+    html+='</div></div>';
+
+    el.innerHTML=html;
+  }catch(err){el.innerHTML='<div class="state-screen"><div class="icon">&#9888;</div><h2>Error</h2><p>'+esc(err.message)+'</p></div>';}
+}
+function statCard(num,label,icon){
+  return '<div class="stat-card"><div class="stat-icon">'+icon+'</div><div class="stat-num">'+num+'</div><div class="stat-label">'+label+'</div></div>';
+}
+function buildStatsControls(){
+  return '<div class="stats-controls"><label>Desde</label><input type="date" value="'+statsRangeStart+'" onchange="setStatsStart(this.value)"/>'
+    +'<label>Hasta</label><input type="date" value="'+statsRangeEnd+'" onchange="setStatsEnd(this.value)"/>'
+    +'<button class="btn btn-blue" onclick="renderStats()">&#8635; Actualizar</button></div>';
+}
+function setStatsStart(v){statsRangeStart=v;}
+function setStatsEnd(v){statsRangeEnd=v;}
 
 // ── Export ────────────────────────────────────────────────────────────────────
 function showExport(){
@@ -842,8 +973,9 @@ function copyExport(){
 function switchTab(tab){
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
   document.getElementById('tab-'+tab).classList.add('active');
-  ['tomorrow','week','history'].forEach(v=>{document.getElementById('view-'+v).style.display=v===tab?'block':'none';});
+  ['today','tomorrow','week','history','stats'].forEach(v=>{document.getElementById('view-'+v).style.display=v===tab?'block':'none';});
   if(tab==='history')renderHistory();
+  if(tab==='stats')renderStats();
 }
 function showLogin(){document.getElementById('loginScreen').style.display='flex';document.getElementById('appContent').style.display='none';document.getElementById('tabBar').style.display='none';document.getElementById('btnSync').style.display='none';document.getElementById('btnRefresh').style.display='none';document.getElementById('btnLogout').style.display='none';}
 function showApp(admin){document.getElementById('loginScreen').style.display='none';document.getElementById('appContent').style.display='block';document.getElementById('tabBar').style.display='flex';document.getElementById('btnRefresh').style.display='inline-flex';if(admin||isAdmin){document.getElementById('btnSync').style.display='inline-flex';document.getElementById('btnLogout').style.display='inline-flex';}}
@@ -859,7 +991,7 @@ updateSyncInfo();
   if(isAdmin){
     if(error){showLogin();alert('Error Google: '+error);return;}
     if(code){await handleCallback(code);return;}
-    if(loadToken()){showApp(true);await syncCalendar();}
+    if(loadToken()){showApp(true);await syncCalendar();startAutoSync();}
     else showLogin();
   }else{
     showApp(false);
