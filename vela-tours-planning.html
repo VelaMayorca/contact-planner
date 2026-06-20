@@ -183,7 +183,7 @@
 </head>
 <body>
 <header>
-  <div class="logo">&#128198; <span>Vela Mayorca Planning App</span></div>
+  <div class="logo">&#128198; <span>Vela Tours</span></div>
   <div class="header-right">
     <div class="sync-info" id="syncInfo"></div>
     <div class="today-badge" id="todayBadge"></div>
@@ -852,6 +852,7 @@ function setHistoryDate(dateStr){historyDate=new Date(dateStr+'T12:00:00');rende
 
 // ── Payments tab ──────────────────────────────────────────────────────────────
 let paymentsDate=new Date(); // today default (today and past days allowed, not future)
+let paymentsDateManuallySet=false; // becomes true once user picks a specific date
 
 function buildPaymentsDateNav(dStr){
   const{weekday,rest}=formatDateLabel(dStr);
@@ -864,6 +865,11 @@ function buildPaymentsDateNav(dStr){
 }
 
 async function renderPayments(){
+  // If date hasn't been manually picked and the page has been open across midnight, snap to actual today
+  if(!paymentsDateManuallySet){
+    const realToday=new Date();
+    if(toDateStr(paymentsDate)!==toDateStr(realToday))paymentsDate=realToday;
+  }
   const el=document.getElementById('view-payments');
   const dStr=toDateStr(paymentsDate);
   el.innerHTML=buildPaymentsDateNav(dStr)+'<div class="state-screen"><div class="icon spinning">&#8635;</div><h2>Cargando...</h2></div>';
@@ -947,12 +953,14 @@ function changePaymentsDate(dir){
   const todayStr=toDateStr(new Date());
   if(toDateStr(newDate)>todayStr)return; // allow today, never future
   paymentsDate=newDate;
+  paymentsDateManuallySet=true;
   renderPayments();
 }
 function setPaymentsDate(dateStr){
   const todayStr=toDateStr(new Date());
   if(dateStr>todayStr)return;
   paymentsDate=new Date(dateStr+'T12:00:00');
+  paymentsDateManuallySet=true;
   renderPayments();
 }
 
