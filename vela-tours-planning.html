@@ -380,7 +380,7 @@ const DEFAULT_WA_TEMPLATE='Hola {nombre}! Te escribimos desde Vela Tours para co
 let activeBoatFilter='all', activeSkipperFilter='all';
 
 
-function toDateStr(d){return d.toISOString().split('T')[0];}
+function toDateStr(d){const y=d.getFullYear();const m=String(d.getMonth()+1).padStart(2,'0');const day=String(d.getDate()).padStart(2,'0');return y+'-'+m+'-'+day;}
 function formatTime(iso){if(!iso||!iso.includes('T'))return'--';try{return new Date(iso).toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'});}catch(e){return'--';}}
 function formatDateLabel(ds){try{const d=new Date(ds+'T12:00:00');return{weekday:d.toLocaleDateString('es-ES',{weekday:'long'}),rest:d.toLocaleDateString('es-ES',{day:'numeric',month:'long'})};}catch(e){return{weekday:'',rest:ds};}}
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
