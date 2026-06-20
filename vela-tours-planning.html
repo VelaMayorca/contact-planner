@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Vela Tours · Planning</title>
+<title>Vela Mayorca Planning App</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect x='3' y='4' width='18' height='17' rx='2' fill='%232d7db3'/%3E%3Crect x='3' y='4' width='18' height='5' rx='2' fill='%2308213a'/%3E%3Cline x1='7' y1='2' x2='7' y2='6' stroke='%2308213a' stroke-width='2' stroke-linecap='round'/%3E%3Cline x1='17' y1='2' x2='17' y2='6' stroke='%2308213a' stroke-width='2' stroke-linecap='round'/%3E%3Crect x='6' y='11' width='3' height='3' fill='%234abfb0'/%3E%3Crect x='10.5' y='11' width='3' height='3' fill='%23faf7f2'/%3E%3Crect x='15' y='11' width='3' height='3' fill='%234abfb0'/%3E%3Crect x='6' y='15' width='3' height='3' fill='%23faf7f2'/%3E%3Crect x='10.5' y='15' width='3' height='3' fill='%234abfb0'/%3E%3C/svg%3E">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
@@ -852,7 +852,7 @@ function setHistoryDate(dateStr){historyDate=new Date(dateStr+'T12:00:00');rende
 
 // ── Payments tab ──────────────────────────────────────────────────────────────
 let paymentsDate=new Date(); // today default (today and past days allowed, not future)
-let paymentsDateManuallySet=false; // becomes true once user picks a specific date
+const pageLoadDateStr=toDateStr(new Date()); // date when the page was first loaded
 
 function buildPaymentsDateNav(dStr){
   const{weekday,rest}=formatDateLabel(dStr);
@@ -865,11 +865,6 @@ function buildPaymentsDateNav(dStr){
 }
 
 async function renderPayments(){
-  // If date hasn't been manually picked and the page has been open across midnight, snap to actual today
-  if(!paymentsDateManuallySet){
-    const realToday=new Date();
-    if(toDateStr(paymentsDate)!==toDateStr(realToday))paymentsDate=realToday;
-  }
   const el=document.getElementById('view-payments');
   const dStr=toDateStr(paymentsDate);
   el.innerHTML=buildPaymentsDateNav(dStr)+'<div class="state-screen"><div class="icon spinning">&#8635;</div><h2>Cargando...</h2></div>';
@@ -953,14 +948,12 @@ function changePaymentsDate(dir){
   const todayStr=toDateStr(new Date());
   if(toDateStr(newDate)>todayStr)return; // allow today, never future
   paymentsDate=newDate;
-  paymentsDateManuallySet=true;
   renderPayments();
 }
 function setPaymentsDate(dateStr){
   const todayStr=toDateStr(new Date());
   if(dateStr>todayStr)return;
   paymentsDate=new Date(dateStr+'T12:00:00');
-  paymentsDateManuallySet=true;
   renderPayments();
 }
 
@@ -1120,7 +1113,15 @@ function switchTab(tab){
   document.getElementById('tab-'+tab).classList.add('active');
   ['today','tomorrow','week','history','payments','stats'].forEach(v=>{document.getElementById('view-'+v).style.display=v===tab?'block':'none';});
   if(tab==='history')renderHistory();
-  if(tab==='payments')renderPayments();
+  if(tab==='payments'){
+    const realToday=new Date();
+    // If the calendar day has rolled over since the page was loaded, and the date shown
+    // still matches the stale "today" from page-load, snap forward to the real today
+    if(toDateStr(paymentsDate)===pageLoadDateStr && toDateStr(realToday)!==pageLoadDateStr){
+      paymentsDate=realToday;
+    }
+    renderPayments();
+  }
   if(tab==='stats')renderStats();
 }
 function showLogin(){document.getElementById('loginScreen').style.display='flex';document.getElementById('appContent').style.display='none';document.getElementById('tabBar').style.display='none';document.getElementById('btnSync').style.display='none';document.getElementById('btnRefresh').style.display='none';document.getElementById('btnLogout').style.display='none';}
