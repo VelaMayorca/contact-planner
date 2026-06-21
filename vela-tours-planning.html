@@ -927,7 +927,9 @@ function buildPaymentsDateNav(dStr){
 async function renderPayments(){
   const el=document.getElementById('view-payments');
   const dStr=toDateStr(paymentsDate);
-  el.innerHTML=buildPaymentsDateNav(dStr)+buildPaymentsFilterBar()+'<div class="state-screen"><div class="icon spinning">&#8635;</div><h2>Cargando...</h2></div>';
+  const scrollY=window.scrollY;
+  const hasContent=el.querySelector('.payment-card');
+  if(!hasContent)el.innerHTML=buildPaymentsDateNav(dStr)+buildPaymentsFilterBar()+'<div class="state-screen"><div class="icon spinning">&#8635;</div><h2>Cargando...</h2></div>';
   try{
     const[events,notesMap]=await Promise.all([loadEventsFromSupabase(dStr,dStr),loadAllNotes()]);
     allNotes={...allNotes,...notesMap};
@@ -936,6 +938,7 @@ async function renderPayments(){
     if(!filteredEvents.length){
       html+='<div class="state-screen"><div class="icon">&#127754;</div><h2>Sin charters</h2><p>'+(events.length?'No hay charters con estos filtros.':'No hubo tours este dia.')+'</p></div>';
       el.innerHTML=html;
+      window.scrollTo(0,scrollY);
       return;
     }
     const sorted=filteredEvents.slice().sort((a,b)=>{if(!a.start)return 1;if(!b.start)return -1;return new Date(a.start)-new Date(b.start);});
@@ -973,6 +976,7 @@ async function renderPayments(){
 
     for(const b of sorted)html+=renderPaymentCard(b);
     el.innerHTML=html;
+    window.scrollTo(0,scrollY);
   }catch(err){el.innerHTML='<div class="state-screen"><div class="icon">&#9888;</div><h2>Error</h2><p>'+esc(err.message)+'</p></div>';}
 }
 
@@ -1007,10 +1011,14 @@ function renderPaymentCard(b){
   html+='<div class="time-col"><div class="time-big">'+formatTime(b.start)+'</div><div class="time-end">'+formatTime(b.end)+'</div></div>';
   html+='<div class="divider-v"></div>';
   html+='<div class="info-col">';
-  html+='<div class="booking-title client-name-row">'+(flag?flag+' ':'&#129489; ')
-    +'<input class="client-name-input" id="clientname-'+sid+'" value="'+esc(clientName)+'" placeholder="Nombre del cliente" oninput="onClientNameInput(\''+sid+'\')" onblur="onClientNameBlur(\''+sid+'\')" onclick="event.stopPropagation()"/>'
-    +'<button class="btn-phone-save" id="clientnamesave-'+sid+'" onclick="saveClientName(\''+sid+'\',\''+esc(b.id)+'\')">Guardar</button>'
-    +'</div>';
+  if(isAdmin){
+    html+='<div class="booking-title client-name-row">'+(flag?flag+' ':'&#129489; ')
+      +'<input class="client-name-input" id="clientname-'+sid+'" value="'+esc(clientName)+'" placeholder="Nombre del cliente" oninput="onClientNameInput(\''+sid+'\')" onblur="onClientNameBlur(\''+sid+'\')" onclick="event.stopPropagation()"/>'
+      +'<button class="btn-phone-save" id="clientnamesave-'+sid+'" onclick="saveClientName(\''+sid+'\',\''+esc(b.id)+'\')">Guardar</button>'
+      +'</div>';
+  }else{
+    html+='<div class="booking-title">'+(flag?flag+' ':'&#129489; ')+esc(clientName||'Sin nombre')+'</div>';
+  }
   html+='<div class="booking-meta">';
   if(b.parsed.pax)html+='<span class="meta-chip chip-pax">&#128101; '+esc(b.parsed.pax)+' pax</span>';
   html+='<span class="meta-chip chip-boat">&#128674; '+esc(boat)+'</span>';
@@ -1133,6 +1141,13 @@ async function setCashDelivered(sid,eventId,checked){
 async function setRating(sid,eventId,stars){
   const existing=allNotes[eventId]||{};
   const newRating=existing.rating===stars?null:stars; // toggle off if clicking same value
+
+  // 3 stars triggers a confirmation since it implies asking the client for a review
+  if(stars===3&&newRating===3){
+    const confirmed=confirm('¿Confirmas que debemos pedir review al cliente de este tour?');
+    if(!confirmed)return;
+  }
+
   try{
     await upsertNote(eventId,{...existing,rating:newRating});
     allNotes[eventId]={...existing,rating:newRating};
