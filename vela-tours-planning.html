@@ -979,17 +979,27 @@ function renderPaymentCard(b){
   const rating=parseInt(n.rating)||0;
   const phone=n.phone||b.parsed.phone||'';
   const flag=getFlag(phone);
+  const tapas=parseInt(n.food_tapas)||0,fish=parseInt(n.food_fish)||0,meat=parseInt(n.food_meat)||0;
+  let foodIcon='';
+  if(n.food==='no')foodIcon='&#10060;';
+  else if(tapas>0||fish>0||meat>0){
+    const parts=[];
+    if(tapas>0)foodIcon+='&#127860;';
+    if(fish>0)foodIcon+='&#128031;';
+    if(meat>0)foodIcon+='&#129385;';
+  }
 
   let html='<div class="booking-card payment-card" id="paycard-'+sid+'">';
   html+='<div class="card-top">';
   html+='<div class="time-col"><div class="time-big">'+formatTime(b.start)+'</div><div class="time-end">'+formatTime(b.end)+'</div></div>';
   html+='<div class="divider-v"></div>';
   html+='<div class="info-col">';
-  html+='<div class="booking-title">'+esc(b.title)+'</div>';
-  if(b.parsed.buyer)html+='<div class="booking-buyer">'+(flag?flag+' ':'&#129489; ')+esc(b.parsed.buyer)+'</div>';
+  html+='<div class="booking-title">'+(flag?flag+' ':'&#129489; ')+esc(b.parsed.buyer||'Sin nombre')+'</div>';
   html+='<div class="booking-meta">';
+  if(b.parsed.pax)html+='<span class="meta-chip chip-pax">&#128101; '+esc(b.parsed.pax)+' pax</span>';
   html+='<span class="meta-chip chip-boat">&#128674; '+esc(boat)+'</span>';
   html+='<span class="meta-chip chip-type">&#128081; '+esc(skipper)+'</span>';
+  if(foodIcon)html+='<span class="meta-chip chip-type">'+foodIcon+'</span>';
   if(isAdmin)html+='<span class="meta-chip" style="background:#fef3c7;color:#b45309;font-weight:700">&#128176; '+balance+'</span>';
   html+='</div></div>';
   // Star rating
