@@ -868,6 +868,41 @@ function setHistoryDate(dateStr){historyDate=new Date(dateStr+'T12:00:00');rende
 // ── Payments tab ──────────────────────────────────────────────────────────────
 let paymentsDate=new Date(); // today default (today and past days allowed, not future)
 const pageLoadDateStr=toDateStr(new Date()); // date when the page was first loaded
+let paymentsBoatFilter='all', paymentsSkipperFilter='all', paymentsTimeFilter='all';
+
+function buildPaymentsFilterBar(){
+  let html='<div class="filter-bar">';
+  html+='<span class="filter-label">Barco:</span>';
+  html+='<button class="filter-chip '+(paymentsBoatFilter==='all'?'active':'')+'" onclick="setPaymentsBoatFilter(\'all\')">Todos</button>';
+  BOATS.forEach(b=>{html+='<button class="filter-chip '+(paymentsBoatFilter===b?'active':'')+'" onclick="setPaymentsBoatFilter(\''+b+'\')">'+b+'</button>';});
+  html+='<span class="filter-label" style="margin-left:8px">Patron:</span>';
+  html+='<select class="skipper-select" onchange="setPaymentsSkipperFilter(this.value)">';
+  html+='<option value="all" '+(paymentsSkipperFilter==='all'?'selected':'')+'>Todos</option>';
+  SKIPPERS.forEach(s=>{html+='<option value="'+s+'" '+(paymentsSkipperFilter===s?'selected':'')+'>'+s+'</option>';});
+  html+='</select>';
+  html+='<span class="filter-label" style="margin-left:8px">Horario:</span>';
+  html+='<button class="filter-chip '+(paymentsTimeFilter==='all'?'active':'')+'" onclick="setPaymentsTimeFilter(\'all\')">Todos</button>';
+  html+='<button class="filter-chip '+(paymentsTimeFilter==='morning'?'active':'')+'" onclick="setPaymentsTimeFilter(\'morning\')">&#9728;&#65039; Manana</button>';
+  html+='<button class="filter-chip '+(paymentsTimeFilter==='afternoon'?'active':'')+'" onclick="setPaymentsTimeFilter(\'afternoon\')">&#127749; Tarde</button>';
+  html+='</div>';
+  return html;
+}
+function setPaymentsBoatFilter(boat){paymentsBoatFilter=boat;renderPayments();}
+function setPaymentsSkipperFilter(skipper){paymentsSkipperFilter=skipper;renderPayments();}
+function setPaymentsTimeFilter(t){paymentsTimeFilter=t;renderPayments();}
+function filterPaymentsBookings(bookings){
+  return bookings.filter(b=>{
+    const n=allNotes[b.id]||{};
+    const boatOk=paymentsBoatFilter==='all'||(n.boat||'')===paymentsBoatFilter;
+    const skipperOk=paymentsSkipperFilter==='all'||(n.skipper||'')===paymentsSkipperFilter;
+    let timeOk=true;
+    if(paymentsTimeFilter!=='all'&&b.start){
+      const hour=new Date(b.start).getHours();
+      timeOk=paymentsTimeFilter==='morning'?hour<14:hour>=14;
+    }
+    return boatOk&&skipperOk&&timeOk;
+  });
+}
 
 function buildPaymentsDateNav(dStr){
   const{weekday,rest}=formatDateLabel(dStr);
@@ -882,17 +917,18 @@ function buildPaymentsDateNav(dStr){
 async function renderPayments(){
   const el=document.getElementById('view-payments');
   const dStr=toDateStr(paymentsDate);
-  el.innerHTML=buildPaymentsDateNav(dStr)+'<div class="state-screen"><div class="icon spinning">&#8635;</div><h2>Cargando...</h2></div>';
+  el.innerHTML=buildPaymentsDateNav(dStr)+buildPaymentsFilterBar()+'<div class="state-screen"><div class="icon spinning">&#8635;</div><h2>Cargando...</h2></div>';
   try{
     const[events,notesMap]=await Promise.all([loadEventsFromSupabase(dStr,dStr),loadAllNotes()]);
     allNotes={...allNotes,...notesMap};
-    let html=buildPaymentsDateNav(dStr);
-    if(!events.length){
-      html+='<div class="state-screen"><div class="icon">&#127754;</div><h2>Sin charters</h2><p>No hubo tours este dia.</p></div>';
+    let html=buildPaymentsDateNav(dStr)+buildPaymentsFilterBar();
+    const filteredEvents=filterPaymentsBookings(events);
+    if(!filteredEvents.length){
+      html+='<div class="state-screen"><div class="icon">&#127754;</div><h2>Sin charters</h2><p>'+(events.length?'No hay charters con estos filtros.':'No hubo tours este dia.')+'</p></div>';
       el.innerHTML=html;
       return;
     }
-    const sorted=events.slice().sort((a,b)=>{if(!a.start)return 1;if(!b.start)return -1;return new Date(a.start)-new Date(b.start);});
+    const sorted=filteredEvents.slice().sort((a,b)=>{if(!a.start)return 1;if(!b.start)return -1;return new Date(a.start)-new Date(b.start);});
 
     if(isAdmin){
       const totalBalance=sorted.reduce((s,b)=>s+(parseFloat(allNotes[b.id]?.balance)||0),0);
@@ -941,6 +977,8 @@ function renderPaymentCard(b){
   const method2=n.payment_method_2||'';
   const delivered=!!n.cash_delivered;
   const rating=parseInt(n.rating)||0;
+  const phone=n.phone||b.parsed.phone||'';
+  const flag=getFlag(phone);
 
   let html='<div class="booking-card payment-card" id="paycard-'+sid+'">';
   html+='<div class="card-top">';
@@ -948,11 +986,11 @@ function renderPaymentCard(b){
   html+='<div class="divider-v"></div>';
   html+='<div class="info-col">';
   html+='<div class="booking-title">'+esc(b.title)+'</div>';
-  if(b.parsed.buyer)html+='<div class="booking-buyer">&#129489; '+esc(b.parsed.buyer)+'</div>';
+  if(b.parsed.buyer)html+='<div class="booking-buyer">'+(flag?flag+' ':'&#129489; ')+esc(b.parsed.buyer)+'</div>';
   html+='<div class="booking-meta">';
   html+='<span class="meta-chip chip-boat">&#128674; '+esc(boat)+'</span>';
   html+='<span class="meta-chip chip-type">&#128081; '+esc(skipper)+'</span>';
-  html+='<span class="meta-chip" style="background:#fef3c7;color:#b45309;font-weight:700">&#128176; '+balance+'</span>';
+  if(isAdmin)html+='<span class="meta-chip" style="background:#fef3c7;color:#b45309;font-weight:700">&#128176; '+balance+'</span>';
   html+='</div></div>';
   // Star rating
   html+='<div class="star-rating">';
