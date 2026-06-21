@@ -179,11 +179,25 @@
   .payment-method-btn.active.method-cash{background:var(--success);border-color:var(--success);color:#fff;}
   .cash-delivered-check{display:flex;align-items:center;gap:8px;margin-top:12px;font-size:0.88rem;font-weight:600;color:var(--text);cursor:pointer;}
   .cash-delivered-check input[type="checkbox"]{width:18px;height:18px;cursor:pointer;accent-color:var(--success);}
+  /* Star rating */
+  .star-rating{display:flex;gap:2px;margin-top:8px;}
+  .star{font-size:1.3rem;color:var(--border);cursor:pointer;transition:color 0.15s,transform 0.1s;line-height:1;}
+  .star:hover{transform:scale(1.15);}
+  .star.filled{color:#f5a623;}
+  /* Split payment */
+  .split-payment-row{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-top:12px;padding-top:12px;border-top:1px dashed var(--border);}
+  .split-amount-field{flex:1;min-width:120px;}
+  .split-amount-field label{display:block;font-size:0.7rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.04em;margin-bottom:4px;}
+  .split-amount-field input{width:100%;font-family:'Inter',sans-serif;font-size:0.88rem;padding:7px 10px;border:1.5px solid var(--border);border-radius:8px;color:var(--text);outline:none;}
+  .split-amount-field input:focus{border-color:var(--blue);}
+  .split-amount-total{font-size:0.78rem;font-weight:600;padding:6px 10px;border-radius:8px;white-space:nowrap;}
+  .split-amount-total.ok{background:#dcfce7;color:var(--success);}
+  .split-amount-total.warn{background:#fef3c7;color:#b45309;}
 </style>
 </head>
 <body>
 <header>
-  <div class="logo">&#128198; <span>Vela Tours</span></div>
+  <div class="logo">&#128198; <span>Vela Mayorca</span></div>
   <div class="header-right">
     <div class="sync-info" id="syncInfo"></div>
     <div class="today-badge" id="todayBadge"></div>
@@ -203,7 +217,7 @@
 <main>
   <div id="loginScreen" style="display:none">
     <div class="login-icon">&#128198;</div>
-    <div class="login-title">Vela Tours &middot; Admin</div>
+    <div class="login-title">Vela Mayorca &middot; Admin</div>
     <div class="login-sub">Conecta tu Google Calendar para sincronizar las reservas con el equipo.</div>
     <button class="btn-google" onclick="startAuth()">
       <svg width="20" height="20" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
@@ -262,6 +276,7 @@ const SKIPPERS=['Edu','Alberto','Silvio','Jaume','Gustavo','Leandro','Otro...'];
 const urlParams=new URLSearchParams(window.location.search);
 const isAdmin=urlParams.get('admin')===ADMIN_KEY||localStorage.getItem('vt_admin')===ADMIN_KEY;
 if(urlParams.get('admin')===ADMIN_KEY){localStorage.setItem('vt_admin',ADMIN_KEY);window.history.replaceState({},'',window.location.pathname);}
+const isPaymentsOnly=urlParams.get('view')==='pagos';
 
 const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 
@@ -879,11 +894,23 @@ async function renderPayments(){
     }
     const sorted=events.slice().sort((a,b)=>{if(!a.start)return 1;if(!b.start)return -1;return new Date(a.start)-new Date(b.start);});
     const totalBalance=sorted.reduce((s,b)=>s+(parseFloat(allNotes[b.id]?.balance)||0),0);
-    const bbva=sorted.filter(b=>allNotes[b.id]?.payment_method==='tpv_bbva').reduce((s,b)=>s+(parseFloat(allNotes[b.id]?.balance)||0),0);
-    const santander=sorted.filter(b=>allNotes[b.id]?.payment_method==='tpv_santander').reduce((s,b)=>s+(parseFloat(allNotes[b.id]?.balance)||0),0);
-    const btp=sorted.filter(b=>allNotes[b.id]?.payment_method==='tpv_btp').reduce((s,b)=>s+(parseFloat(allNotes[b.id]?.balance)||0),0);
-    const cash=sorted.filter(b=>allNotes[b.id]?.payment_method==='cash').reduce((s,b)=>s+(parseFloat(allNotes[b.id]?.balance)||0),0);
-    const cashPending=sorted.filter(b=>allNotes[b.id]?.payment_method==='cash'&&!allNotes[b.id]?.cash_delivered).length;
+
+    // Helper: amount attributed to a given payment method for a booking, accounting for splits
+    function amountFor(b,method){
+      const n=allNotes[b.id]||{};
+      const m1=n.payment_method,m2=n.payment_method_2;
+      const bal=parseFloat(n.balance)||0;
+      if(m1===method&&m2){return parseFloat(n.payment_amount_1)||0;}
+      if(m2===method){return parseFloat(n.payment_amount_2)||0;}
+      if(m1===method&&!m2){return bal;}
+      return 0;
+    }
+    const methodTotal=method=>sorted.reduce((s,b)=>s+amountFor(b,method),0);
+    const bbva=methodTotal('tpv_bbva');
+    const santander=methodTotal('tpv_santander');
+    const btp=methodTotal('tpv_btp');
+    const cash=methodTotal('cash');
+    const cashPending=sorted.filter(b=>{const n=allNotes[b.id]||{};return(n.payment_method==='cash'||n.payment_method_2==='cash')&&!n.cash_delivered;}).length;
 
     html+='<div class="top-bar"><div class="summary-bar">';
     html+='<div class="sum-item"><div class="sum-num">'+sorted.length+'</div><div class="sum-label">Charters</div></div>';
@@ -905,9 +932,12 @@ function renderPaymentCard(b){
   const sid=esc(b.id);
   const boat=n.boat||'--';
   const skipper=n.skipper||'--';
-  const balance=n.balance?parseFloat(n.balance).toLocaleString('es-ES')+'€':'--';
-  const method=n.payment_method||'';
+  const balanceNum=parseFloat(n.balance)||0;
+  const balance=n.balance?balanceNum.toLocaleString('es-ES')+'€':'--';
+  const method1=n.payment_method||'';
+  const method2=n.payment_method_2||'';
   const delivered=!!n.cash_delivered;
+  const rating=parseInt(n.rating)||0;
 
   let html='<div class="booking-card payment-card" id="paycard-'+sid+'">';
   html+='<div class="card-top">';
@@ -921,19 +951,42 @@ function renderPaymentCard(b){
   html+='<span class="meta-chip chip-type">&#128081; '+esc(skipper)+'</span>';
   html+='<span class="meta-chip" style="background:#fef3c7;color:#b45309;font-weight:700">&#128176; '+balance+'</span>';
   html+='</div></div>';
+  // Star rating
+  html+='<div class="star-rating">';
+  for(let s=1;s<=3;s++){
+    html+='<span class="star '+(s<=rating?'filled':'')+'" onclick="setRating(\''+sid+'\',\''+esc(b.id)+'\','+s+')">&#9733;</span>';
+  }
+  html+='</div>';
   html+='</div>';
 
   // Payment method selector - RunWild and Jaleo only have Cash + TPV BTP
   const isBtpBoat=boat==='RunWild'||boat==='Jaleo';
   const methodOptions=isBtpBoat?['tpv_btp','cash']:['tpv_bbva','tpv_santander','cash'];
+  const labels={tpv_bbva:'&#128179; TPV BBVA',tpv_santander:'&#128179; TPV Santander',tpv_btp:'&#128179; TPV BTP',cash:'&#128181; Cash'};
+  const activeMethods=[method1,method2].filter(Boolean);
+  const isSplit=activeMethods.length===2;
+
   html+='<div class="payment-controls">';
   html+='<div class="payment-method-row">';
   methodOptions.forEach(m=>{
-    const labels={tpv_bbva:'&#128179; TPV BBVA',tpv_santander:'&#128179; TPV Santander',tpv_btp:'&#128179; TPV BTP',cash:'&#128181; Cash'};
-    html+='<button class="payment-method-btn '+(method===m?'active method-'+m:'')+'" onclick="setPaymentMethod(\''+sid+'\',\''+esc(b.id)+'\',\''+m+'\')">'+labels[m]+'</button>';
+    const isActive=activeMethods.includes(m);
+    html+='<button class="payment-method-btn '+(isActive?'active method-'+m:'')+'" onclick="togglePaymentMethod(\''+sid+'\',\''+esc(b.id)+'\',\''+m+'\')">'+labels[m]+'</button>';
   });
   html+='</div>';
-  if(method==='cash'){
+
+  if(isSplit){
+    const amt1=n.payment_amount_1!=null?n.payment_amount_1:'';
+    const amt2=n.payment_amount_2!=null?n.payment_amount_2:'';
+    html+='<div class="split-payment-row">';
+    html+='<div class="split-amount-field"><label>'+labels[method1].replace(/&#\d+;/,'')+'</label><input type="number" min="0" step="0.01" placeholder="0.00" value="'+esc(amt1)+'" onchange="setSplitAmount(\''+sid+'\',\''+esc(b.id)+'\',1,this.value)"/></div>';
+    html+='<div class="split-amount-field"><label>'+labels[method2].replace(/&#\d+;/,'')+'</label><input type="number" min="0" step="0.01" placeholder="0.00" value="'+esc(amt2)+'" onchange="setSplitAmount(\''+sid+'\',\''+esc(b.id)+'\',2,this.value)"/></div>';
+    const sumAmt=(parseFloat(amt1)||0)+(parseFloat(amt2)||0);
+    const diff=balanceNum-sumAmt;
+    html+='<div class="split-amount-total '+(Math.abs(diff)<0.01?'ok':'warn')+'">Suma: '+sumAmt.toLocaleString('es-ES')+'&#8364; '+(Math.abs(diff)<0.01?'&#10003;':'(falta '+diff.toLocaleString('es-ES')+'&#8364;)')+'</div>';
+    html+='</div>';
+  }
+
+  if(activeMethods.includes('cash')){
     html+='<label class="cash-delivered-check"><input type="checkbox" '+(delivered?'checked':'')+' onchange="setCashDelivered(\''+sid+'\',\''+esc(b.id)+'\',this.checked)"/> Entregado</label>';
   }
   html+='</div>';
@@ -957,21 +1010,67 @@ function setPaymentsDate(dateStr){
   renderPayments();
 }
 
-async function setPaymentMethod(sid,eventId,method){
+async function togglePaymentMethod(sid,eventId,method){
   const existing=allNotes[eventId]||{};
-  const newMethod=existing.payment_method===method?null:method; // toggle off if clicking same
+  let m1=existing.payment_method||null;
+  let m2=existing.payment_method_2||null;
+
+  if(m1===method){
+    // Clicking the already-active primary method removes it, promote m2 to m1
+    m1=m2;m2=null;
+  }else if(m2===method){
+    // Clicking the already-active secondary method removes it
+    m2=null;
+  }else if(!m1){
+    m1=method;
+  }else if(!m2){
+    m2=method;
+  }else{
+    // Both slots full and clicking a third different method - replace m2
+    m2=method;
+  }
+
+  const fields={
+    payment_method:m1,
+    payment_method_2:m2,
+    cash_delivered:(m1==='cash'||m2==='cash')?(existing.cash_delivered||false):false,
+    payment_amount_1:(m1&&m2)?(existing.payment_amount_1??null):null,
+    payment_amount_2:(m1&&m2)?(existing.payment_amount_2??null):null
+  };
   try{
-    await upsertNote(eventId,{...existing,payment_method:newMethod,cash_delivered:newMethod==='cash'?(existing.cash_delivered||false):false});
-    allNotes[eventId]={...existing,payment_method:newMethod,cash_delivered:newMethod==='cash'?(existing.cash_delivered||false):false};
+    await upsertNote(eventId,{...existing,...fields});
+    allNotes[eventId]={...existing,...fields};
     renderPayments();
   }catch(err){alert('Error guardando metodo de pago: '+err.message);}
 }
+
+async function setSplitAmount(sid,eventId,slot,value){
+  const existing=allNotes[eventId]||{};
+  const field=slot===1?'payment_amount_1':'payment_amount_2';
+  const val=value===''?null:parseFloat(value);
+  try{
+    await upsertNote(eventId,{...existing,[field]:val});
+    allNotes[eventId]={...existing,[field]:val};
+    renderPayments();
+  }catch(err){alert('Error guardando importe: '+err.message);}
+}
+
 async function setCashDelivered(sid,eventId,checked){
   const existing=allNotes[eventId]||{};
   try{
     await upsertNote(eventId,{...existing,cash_delivered:checked});
     allNotes[eventId]={...existing,cash_delivered:checked};
   }catch(err){alert('Error guardando estado de entrega: '+err.message);}
+}
+
+async function setRating(sid,eventId,stars){
+  const existing=allNotes[eventId]||{};
+  const newRating=existing.rating===stars?null:stars; // toggle off if clicking same value
+  try{
+    await upsertNote(eventId,{...existing,rating:newRating});
+    allNotes[eventId]={...existing,rating:newRating};
+    renderPayments();
+  }catch(err){alert('Error guardando valoracion: '+err.message);}
 }
 
 // ── Stats tab ─────────────────────────────────────────────────────────────────
@@ -1125,7 +1224,18 @@ function switchTab(tab){
   if(tab==='stats')renderStats();
 }
 function showLogin(){document.getElementById('loginScreen').style.display='flex';document.getElementById('appContent').style.display='none';document.getElementById('tabBar').style.display='none';document.getElementById('btnSync').style.display='none';document.getElementById('btnRefresh').style.display='none';document.getElementById('btnLogout').style.display='none';}
-function showApp(admin){document.getElementById('loginScreen').style.display='none';document.getElementById('appContent').style.display='block';document.getElementById('tabBar').style.display='flex';document.getElementById('btnRefresh').style.display='inline-flex';if(admin||isAdmin){document.getElementById('btnSync').style.display='inline-flex';document.getElementById('btnLogout').style.display='inline-flex';}}
+function showApp(admin){
+  document.getElementById('loginScreen').style.display='none';
+  document.getElementById('appContent').style.display='block';
+  if(isPaymentsOnly){
+    document.getElementById('tabBar').style.display='none';
+    document.getElementById('btnRefresh').style.display='inline-flex';
+  }else{
+    document.getElementById('tabBar').style.display='flex';
+    document.getElementById('btnRefresh').style.display='inline-flex';
+    if(admin||isAdmin){document.getElementById('btnSync').style.display='inline-flex';document.getElementById('btnLogout').style.display='inline-flex';}
+  }
+}
 function showLoading(msg){['tomorrow','week'].forEach(v=>{document.getElementById('view-'+v).innerHTML='<div class="state-screen"><div class="icon spinning">&#8635;</div><h2>'+(msg||'Cargando...')+'</h2></div>';});}
 function showError(msg){['tomorrow','week'].forEach(v=>{document.getElementById('view-'+v).innerHTML='<div class="state-screen"><div class="icon">&#9888;</div><h2>Error</h2><p>'+esc(msg)+'</p></div>';});}
 
@@ -1143,6 +1253,15 @@ updateSyncInfo();
   }else{
     showApp(false);
     await loadFromSupabase();
+    if(isPaymentsOnly){
+      document.getElementById('view-today').style.display='none';
+      document.getElementById('view-tomorrow').style.display='none';
+      document.getElementById('view-week').style.display='none';
+      document.getElementById('view-history').style.display='none';
+      document.getElementById('view-stats').style.display='none';
+      document.getElementById('view-payments').style.display='block';
+      renderPayments();
+    }
   }
 })();
 </script>
