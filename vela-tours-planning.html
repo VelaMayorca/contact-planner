@@ -175,7 +175,7 @@
   .payment-method-btn:hover{border-color:var(--blue);}
   .payment-method-btn.active.method-tpv_bbva{background:#1464A5;border-color:#1464A5;color:#fff;}
   .payment-method-btn.active.method-tpv_santander{background:#EC0000;border-color:#EC0000;color:#fff;}
-  .payment-method-btn.active.method-tpv_btp{background:#7c3aed;border-color:#7c3aed;color:#fff;}
+  .payment-method-btn.active.method-tpv_btp{background:#f97316;border-color:#f97316;color:#fff;}
   .payment-method-btn.active.method-cash{background:var(--success);border-color:var(--success);color:#fff;}
   .cash-delivered-check{display:flex;align-items:center;gap:8px;margin-top:12px;font-size:0.88rem;font-weight:600;color:var(--text);cursor:pointer;}
   .cash-delivered-check input[type="checkbox"]{width:18px;height:18px;cursor:pointer;accent-color:var(--success);}
@@ -482,7 +482,7 @@ function renderView(bookings,cid,isTomorrow,isToday){
   html+='<div class="sum-item"><div class="sum-num" style="color:var(--danger)">'+notContacted+'</div><div class="sum-label">Sin contactar</div></div>';
   html+='<div class="sum-item"><div class="sum-num" style="color:var(--warn)">'+contacted+'</div><div class="sum-label">Contactados</div></div>';
   html+='<div class="sum-item"><div class="sum-num" style="color:var(--success)">'+reminded+'</div><div class="sum-label">Enviados</div></div>';
-  if(totalBalance>0)html+='<div class="sum-item"><div class="sum-num sum-balance">'+totalBalance.toLocaleString('es-ES',{minimumFractionDigits:0,maximumFractionDigits:0})+'&#8364;</div><div class="sum-label">Balance</div></div>';
+  if(isAdmin&&totalBalance>0)html+='<div class="sum-item"><div class="sum-num sum-balance">'+totalBalance.toLocaleString('es-ES',{minimumFractionDigits:0,maximumFractionDigits:0})+'&#8364;</div><div class="sum-label">Balance</div></div>';
   const tapasList=bookings.map(b=>parseInt(allNotes[b.id]?.food_tapas)||0).filter(v=>v>0);
   const fishList=bookings.map(b=>parseInt(allNotes[b.id]?.food_fish)||0).filter(v=>v>0);
   const meatList=bookings.map(b=>parseInt(allNotes[b.id]?.food_meat)||0).filter(v=>v>0);
@@ -500,7 +500,7 @@ function renderView(bookings,cid,isTomorrow,isToday){
     const dayPax=dayB.reduce((s,b)=>s+(parseInt(b.parsed.pax)||0),0);
     const dayBalance=dayB.reduce((s,b)=>s+(parseFloat(allNotes[b.id]?.balance)||0),0);
     html+='<div class="day-section '+(isCompact?'compact':'')+'"><div class="day-header"><div class="day-label">'+rest+'<span class="weekday">'+weekday+'</span></div>';
-    html+='<div class="day-count">'+dayB.length+' tours &middot; '+dayPax+' pax'+(dayBalance>0?' &middot; '+dayBalance.toLocaleString('es-ES')+'&#8364;':'')+'</div></div>';
+    html+='<div class="day-count">'+dayB.length+' tours &middot; '+dayPax+' pax'+(isAdmin&&dayBalance>0?' &middot; '+dayBalance.toLocaleString('es-ES')+'&#8364;':'')+'</div></div>';
     for(const b of dayB)html+=renderCard(b);
     html+='</div>';
   }
@@ -674,7 +674,7 @@ function renderCard(b){
   if(n.contacted==='si')pills.push('<span class="note-pill">&#9989; Contactado</span>');
   else if(n.contacted==='reminder')pills.push('<span class="note-pill">&#128228; Reminder enviado</span>');
   else if(n.contacted==='no_responde')pills.push('<span class="note-pill">&#128244; No responde</span>');
-  if(n.balance)pills.push('<span class="note-pill">&#128176; <strong>'+n.balance+'&#8364;</strong></span>');
+  if(isAdmin&&n.balance)pills.push('<span class="note-pill">&#128176; <strong>'+n.balance+'&#8364;</strong></span>');
   const tapas=parseInt(n.food_tapas)||0,fish=parseInt(n.food_fish)||0,meat=parseInt(n.food_meat)||0;
   if(tapas>0)pills.push('<span class="note-pill">&#127860; <strong>'+tapas+'</strong> tapas</span>');
   if(fish>0)pills.push('<span class="note-pill">&#128031; <strong>'+fish+'</strong> fish</span>');
@@ -856,7 +856,7 @@ async function renderHistory(){
     else{
       const totalPax=events.reduce((s,b)=>s+(parseInt(b.parsed.pax)||0),0);
       const totalBalance=events.reduce((s,b)=>s+(parseFloat(allNotes[b.id]?.balance)||0),0);
-      html+='<div class="top-bar"><div class="summary-bar"><div class="sum-item"><div class="sum-num">'+events.length+'</div><div class="sum-label">Tours</div></div><div class="sum-item"><div class="sum-num">'+(totalPax||'--')+'</div><div class="sum-label">Personas</div></div>'+(totalBalance>0?'<div class="sum-item"><div class="sum-num sum-balance">'+totalBalance.toLocaleString('es-ES')+'&#8364;</div><div class="sum-label">Balance</div></div>':'')+'</div></div>';
+      html+='<div class="top-bar"><div class="summary-bar"><div class="sum-item"><div class="sum-num">'+events.length+'</div><div class="sum-label">Tours</div></div><div class="sum-item"><div class="sum-num">'+(totalPax||'--')+'</div><div class="sum-label">Personas</div></div>'+(isAdmin&&totalBalance>0?'<div class="sum-item"><div class="sum-num sum-balance">'+totalBalance.toLocaleString('es-ES')+'&#8364;</div><div class="sum-label">Balance</div></div>':'')+'</div></div>';
       for(const b of events)html+=renderCard(b);
     }
     el.innerHTML=html;
@@ -893,34 +893,37 @@ async function renderPayments(){
       return;
     }
     const sorted=events.slice().sort((a,b)=>{if(!a.start)return 1;if(!b.start)return -1;return new Date(a.start)-new Date(b.start);});
-    const totalBalance=sorted.reduce((s,b)=>s+(parseFloat(allNotes[b.id]?.balance)||0),0);
 
-    // Helper: amount attributed to a given payment method for a booking, accounting for splits
-    function amountFor(b,method){
-      const n=allNotes[b.id]||{};
-      const m1=n.payment_method,m2=n.payment_method_2;
-      const bal=parseFloat(n.balance)||0;
-      if(m1===method&&m2){return parseFloat(n.payment_amount_1)||0;}
-      if(m2===method){return parseFloat(n.payment_amount_2)||0;}
-      if(m1===method&&!m2){return bal;}
-      return 0;
+    if(isAdmin){
+      const totalBalance=sorted.reduce((s,b)=>s+(parseFloat(allNotes[b.id]?.balance)||0),0);
+
+      // Helper: amount attributed to a given payment method for a booking, accounting for splits
+      function amountFor(b,method){
+        const n=allNotes[b.id]||{};
+        const m1=n.payment_method,m2=n.payment_method_2;
+        const bal=parseFloat(n.balance)||0;
+        if(m1===method&&m2){return parseFloat(n.payment_amount_1)||0;}
+        if(m2===method){return parseFloat(n.payment_amount_2)||0;}
+        if(m1===method&&!m2){return bal;}
+        return 0;
+      }
+      const methodTotal=method=>sorted.reduce((s,b)=>s+amountFor(b,method),0);
+      const bbva=methodTotal('tpv_bbva');
+      const santander=methodTotal('tpv_santander');
+      const btp=methodTotal('tpv_btp');
+      const cash=methodTotal('cash');
+      const cashPending=sorted.filter(b=>{const n=allNotes[b.id]||{};return(n.payment_method==='cash'||n.payment_method_2==='cash')&&!n.cash_delivered;}).length;
+
+      html+='<div class="top-bar"><div class="summary-bar">';
+      html+='<div class="sum-item"><div class="sum-num">'+sorted.length+'</div><div class="sum-label">Charters</div></div>';
+      html+='<div class="sum-item"><div class="sum-num sum-balance">'+totalBalance.toLocaleString('es-ES')+'&#8364;</div><div class="sum-label">Total</div></div>';
+      if(bbva>0)html+='<div class="sum-item"><div class="sum-num" style="color:#1464A5">'+bbva.toLocaleString('es-ES')+'&#8364;</div><div class="sum-label">TPV BBVA</div></div>';
+      if(santander>0)html+='<div class="sum-item"><div class="sum-num" style="color:#EC0000">'+santander.toLocaleString('es-ES')+'&#8364;</div><div class="sum-label">TPV Santander</div></div>';
+      if(btp>0)html+='<div class="sum-item"><div class="sum-num" style="color:#f97316">'+btp.toLocaleString('es-ES')+'&#8364;</div><div class="sum-label">TPV BTP</div></div>';
+      if(cash>0)html+='<div class="sum-item"><div class="sum-num" style="color:var(--success)">'+cash.toLocaleString('es-ES')+'&#8364;</div><div class="sum-label">Cash</div></div>';
+      if(cashPending>0)html+='<div class="sum-item"><div class="sum-num" style="color:var(--danger)">'+cashPending+'</div><div class="sum-label">Cash pendiente</div></div>';
+      html+='</div></div>';
     }
-    const methodTotal=method=>sorted.reduce((s,b)=>s+amountFor(b,method),0);
-    const bbva=methodTotal('tpv_bbva');
-    const santander=methodTotal('tpv_santander');
-    const btp=methodTotal('tpv_btp');
-    const cash=methodTotal('cash');
-    const cashPending=sorted.filter(b=>{const n=allNotes[b.id]||{};return(n.payment_method==='cash'||n.payment_method_2==='cash')&&!n.cash_delivered;}).length;
-
-    html+='<div class="top-bar"><div class="summary-bar">';
-    html+='<div class="sum-item"><div class="sum-num">'+sorted.length+'</div><div class="sum-label">Charters</div></div>';
-    html+='<div class="sum-item"><div class="sum-num sum-balance">'+totalBalance.toLocaleString('es-ES')+'&#8364;</div><div class="sum-label">Total</div></div>';
-    if(bbva>0)html+='<div class="sum-item"><div class="sum-num" style="color:#1464A5">'+bbva.toLocaleString('es-ES')+'&#8364;</div><div class="sum-label">TPV BBVA</div></div>';
-    if(santander>0)html+='<div class="sum-item"><div class="sum-num" style="color:#EC0000">'+santander.toLocaleString('es-ES')+'&#8364;</div><div class="sum-label">TPV Santander</div></div>';
-    if(btp>0)html+='<div class="sum-item"><div class="sum-num" style="color:#7c3aed">'+btp.toLocaleString('es-ES')+'&#8364;</div><div class="sum-label">TPV BTP</div></div>';
-    if(cash>0)html+='<div class="sum-item"><div class="sum-num" style="color:var(--success)">'+cash.toLocaleString('es-ES')+'&#8364;</div><div class="sum-label">Cash</div></div>';
-    if(cashPending>0)html+='<div class="sum-item"><div class="sum-num" style="color:var(--danger)">'+cashPending+'</div><div class="sum-label">Cash pendiente</div></div>';
-    html+='</div></div>';
 
     for(const b of sorted)html+=renderPaymentCard(b);
     el.innerHTML=html;
