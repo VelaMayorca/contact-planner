@@ -179,6 +179,10 @@
   .payment-method-btn.active.method-cash{background:var(--success);border-color:var(--success);color:#fff;}
   .cash-delivered-check{display:flex;align-items:center;gap:8px;margin-top:12px;font-size:0.88rem;font-weight:600;color:var(--text);cursor:pointer;}
   .cash-delivered-check input[type="checkbox"]{width:18px;height:18px;cursor:pointer;accent-color:var(--success);}
+  /* Editable client name */
+  .client-name-row{display:flex;align-items:center;gap:6px;}
+  .client-name-input{font-family:'DM Serif Display',serif;font-size:0.95rem;color:var(--text);border:none;outline:none;background:transparent;flex:1;min-width:100px;cursor:text;}
+  .client-name-input:focus{border-bottom:2px solid var(--blue);background:#f0f8ff;border-radius:4px 4px 0 0;padding:2px 4px;}
   /* Star rating */
   .star-rating{display:flex;gap:2px;margin-top:8px;}
   .star{font-size:1.3rem;color:var(--border);cursor:pointer;transition:color 0.15s,transform 0.1s;line-height:1;}
@@ -486,12 +490,15 @@ function renderView(bookings,cid,isTomorrow,isToday){
   const tapasList=bookings.map(b=>parseInt(allNotes[b.id]?.food_tapas)||0).filter(v=>v>0);
   const fishList=bookings.map(b=>parseInt(allNotes[b.id]?.food_fish)||0).filter(v=>v>0);
   const meatList=bookings.map(b=>parseInt(allNotes[b.id]?.food_meat)||0).filter(v=>v>0);
+  const veggieList=bookings.map(b=>parseInt(allNotes[b.id]?.food_veggie)||0).filter(v=>v>0);
   const totalTapas=tapasList.reduce((s,v)=>s+v,0);
   const totalFish=fishList.reduce((s,v)=>s+v,0);
   const totalMeat=meatList.reduce((s,v)=>s+v,0);
+  const totalVeggie=veggieList.reduce((s,v)=>s+v,0);
   if(totalTapas>0)html+='<div class="sum-item"><div class="sum-num">'+totalTapas+'</div><div class="sum-label">&#127860; Tapas ('+tapasList.join('-')+')</div></div>';
   if(totalFish>0)html+='<div class="sum-item"><div class="sum-num">'+totalFish+'</div><div class="sum-label">&#128031; Fish ('+fishList.join('-')+')</div></div>';
   if(totalMeat>0)html+='<div class="sum-item"><div class="sum-num">'+totalMeat+'</div><div class="sum-label">&#129385; Meat ('+meatList.join('-')+')</div></div>';
+  if(totalVeggie>0)html+='<div class="sum-item"><div class="sum-num">'+totalVeggie+'</div><div class="sum-label">&#129382; Veggie ('+veggieList.join('-')+')</div></div>';
 
   html+='</div>'+exportBtn+'</div>';
 
@@ -601,7 +608,7 @@ function buildWa(phone){
 
 // ── Progress & ready logic ───────────────────────────────────────────────────
 function isBookingReady(n,phone){
-  const foodOk=n.food==='no'||((n.food_tapas||0)+(n.food_fish||0)+(n.food_meat||0))>0;
+  const foodOk=n.food==='no'||((n.food_tapas||0)+(n.food_fish||0)+(n.food_meat||0)+(n.food_veggie||0))>0;
   return !!(n.pax && foodOk && n.boat && n.balance && n.contacted==='reminder');
 }
 function calcProgress(bookings){
@@ -613,7 +620,7 @@ function calcProgress(bookings){
     const phone=n.phone||b.parsed.phone||'';
     totalFields+=FIELDS.length;
     if(n.pax)filledFields++;
-    const foodFilled=n.food==='no'||((parseInt(n.food_tapas)||0)+(parseInt(n.food_fish)||0)+(parseInt(n.food_meat)||0))>0||n.food==='si';
+    const foodFilled=n.food==='no'||((parseInt(n.food_tapas)||0)+(parseInt(n.food_fish)||0)+(parseInt(n.food_meat)||0)+(parseInt(n.food_veggie)||0))>0||n.food==='si';
     if(foodFilled)filledFields++;
     if(n.boat)filledFields++;
     if(parseFloat(n.balance)||0)filledFields++;
@@ -675,10 +682,11 @@ function renderCard(b){
   else if(n.contacted==='reminder')pills.push('<span class="note-pill">&#128228; Reminder enviado</span>');
   else if(n.contacted==='no_responde')pills.push('<span class="note-pill">&#128244; No responde</span>');
   if(isAdmin&&n.balance)pills.push('<span class="note-pill">&#128176; <strong>'+n.balance+'&#8364;</strong></span>');
-  const tapas=parseInt(n.food_tapas)||0,fish=parseInt(n.food_fish)||0,meat=parseInt(n.food_meat)||0;
+  const tapas=parseInt(n.food_tapas)||0,fish=parseInt(n.food_fish)||0,meat=parseInt(n.food_meat)||0,veggie=parseInt(n.food_veggie)||0;
   if(tapas>0)pills.push('<span class="note-pill">&#127860; <strong>'+tapas+'</strong> tapas</span>');
   if(fish>0)pills.push('<span class="note-pill">&#128031; <strong>'+fish+'</strong> fish</span>');
   if(meat>0)pills.push('<span class="note-pill">&#129385; <strong>'+meat+'</strong> meat</span>');
+  if(veggie>0)pills.push('<span class="note-pill">&#129382; <strong>'+veggie+'</strong> veggie</span>');
   if(n.comment)pills.push('<span class="note-pill">&#128172; '+esc(n.comment.slice(0,40))+(n.comment.length>40?'...':'')+'</span>');
   if(pills.length)html+='<div class="notes-summary" style="margin-top:8px;display:flex;flex-wrap:wrap;gap:5px;">'+pills.join('')+'</div>';
   html+='</div>';
@@ -715,13 +723,14 @@ function renderCard(b){
   +'<option value="no" '+((n.food==='no')?'selected':'')+'>No quieren</option>'
   +'<option value="pendiente" '+((n.food==='pendiente')?'selected':'')+'>Pendiente</option>'
   +'</select></div>';
-  const foodVisible=(n.food==='si'||(!n.food&&((n.food_tapas||0)+(n.food_fish||0)+(n.food_meat||0))>0));
+  const foodVisible=(n.food==='si'||(!n.food&&((n.food_tapas||0)+(n.food_fish||0)+(n.food_meat||0)+(n.food_veggie||0))>0));
   html+='<div class="note-field food-qty-fields" id="food-qty-'+sid+'" style="grid-column:1/-1;display:'+(foodVisible?'block':'none')+'">'
   +'<label>Cantidades de comida</label>'
   +'<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:6px">'
   +'<div style="flex:1;min-width:100px"><div style="font-size:0.75rem;color:var(--muted);margin-bottom:4px">&#127860; Tapas</div><input type="number" min="0" max="50" placeholder="0" value="'+(n.food_tapas||'')+'" id="n-tapas-'+sid+'"/></div>'
   +'<div style="flex:1;min-width:100px"><div style="font-size:0.75rem;color:var(--muted);margin-bottom:4px">&#128031; Fish Paella</div><input type="number" min="0" max="50" placeholder="0" value="'+(n.food_fish||'')+'" id="n-fish-'+sid+'"/></div>'
   +'<div style="flex:1;min-width:100px"><div style="font-size:0.75rem;color:var(--muted);margin-bottom:4px">&#129385; Meat Paella</div><input type="number" min="0" max="50" placeholder="0" value="'+(n.food_meat||'')+'" id="n-meat-'+sid+'"/></div>'
+  +'<div style="flex:1;min-width:100px"><div style="font-size:0.75rem;color:var(--muted);margin-bottom:4px">&#129382; Veggie Paella</div><input type="number" min="0" max="50" placeholder="0" value="'+(n.food_veggie||'')+'" id="n-veggie-'+sid+'"/></div>'
   +'</div></div>';
   html+='<div class="note-field"><label>Barco</label><select id="n-boat-'+sid+'"><option value="">-- Seleccionar --</option>'+boatOpts+'</select></div>';
   html+='<div class="note-field"><label>Patron</label><select id="n-skipper-'+sid+'"><option value="">-- Seleccionar --</option>'+skipOpts+'</select></div>';
@@ -803,6 +812,7 @@ async function saveNotes(sid,eventId){
     food_tapas:parseInt(document.getElementById('n-tapas-'+sid)?.value)||0,
     food_fish:parseInt(document.getElementById('n-fish-'+sid)?.value)||0,
     food_meat:parseInt(document.getElementById('n-meat-'+sid)?.value)||0,
+    food_veggie:parseInt(document.getElementById('n-veggie-'+sid)?.value)||0,
     boat:document.getElementById('n-boat-'+sid)?.value||'',
     skipper:document.getElementById('n-skipper-'+sid)?.value||'',
     balance:parseFloat(document.getElementById('n-balance-'+sid)?.value)||null,
@@ -979,22 +989,28 @@ function renderPaymentCard(b){
   const rating=parseInt(n.rating)||0;
   const phone=n.phone||b.parsed.phone||'';
   const flag=getFlag(phone);
-  const tapas=parseInt(n.food_tapas)||0,fish=parseInt(n.food_fish)||0,meat=parseInt(n.food_meat)||0;
+  const tapas=parseInt(n.food_tapas)||0,fish=parseInt(n.food_fish)||0,meat=parseInt(n.food_meat)||0,veggie=parseInt(n.food_veggie)||0;
   let foodIcon='';
   if(n.food==='no')foodIcon='&#10060;';
-  else if(tapas>0||fish>0||meat>0){
+  else if(tapas>0||fish>0||meat>0||veggie>0){
     const parts=[];
     if(tapas>0)foodIcon+='&#127860;';
     if(fish>0)foodIcon+='&#128031;';
     if(meat>0)foodIcon+='&#129385;';
+    if(veggie>0)foodIcon+='&#129382;';
   }
+
+  const clientName=n.client_name||b.parsed.buyer||'';
 
   let html='<div class="booking-card payment-card" id="paycard-'+sid+'">';
   html+='<div class="card-top">';
   html+='<div class="time-col"><div class="time-big">'+formatTime(b.start)+'</div><div class="time-end">'+formatTime(b.end)+'</div></div>';
   html+='<div class="divider-v"></div>';
   html+='<div class="info-col">';
-  html+='<div class="booking-title">'+(flag?flag+' ':'&#129489; ')+esc(b.parsed.buyer||'Sin nombre')+'</div>';
+  html+='<div class="booking-title client-name-row">'+(flag?flag+' ':'&#129489; ')
+    +'<input class="client-name-input" id="clientname-'+sid+'" value="'+esc(clientName)+'" placeholder="Nombre del cliente" oninput="onClientNameInput(\''+sid+'\')" onblur="onClientNameBlur(\''+sid+'\')" onclick="event.stopPropagation()"/>'
+    +'<button class="btn-phone-save" id="clientnamesave-'+sid+'" onclick="saveClientName(\''+sid+'\',\''+esc(b.id)+'\')">Guardar</button>'
+    +'</div>';
   html+='<div class="booking-meta">';
   if(b.parsed.pax)html+='<span class="meta-chip chip-pax">&#128101; '+esc(b.parsed.pax)+' pax</span>';
   html+='<span class="meta-chip chip-boat">&#128674; '+esc(boat)+'</span>';
@@ -1124,6 +1140,30 @@ async function setRating(sid,eventId,stars){
   }catch(err){alert('Error guardando valoracion: '+err.message);}
 }
 
+function onClientNameInput(sid){
+  const btn=document.getElementById('clientnamesave-'+sid);
+  if(btn)btn.style.display='inline-flex';
+}
+function onClientNameBlur(sid){
+  setTimeout(()=>{
+    const btn=document.getElementById('clientnamesave-'+sid);
+    if(btn&&document.activeElement!==btn)btn.style.display='none';
+  },200);
+}
+async function saveClientName(sid,eventId){
+  const inp=document.getElementById('clientname-'+sid),btn=document.getElementById('clientnamesave-'+sid);
+  if(!inp)return;
+  btn.textContent='...';
+  try{
+    const existing=allNotes[eventId]||{};
+    const newName=inp.value.trim();
+    await upsertNote(eventId,{...existing,client_name:newName});
+    allNotes[eventId]={...existing,client_name:newName};
+    btn.textContent='OK';btn.style.background='var(--success)';
+    setTimeout(()=>{btn.style.display='none';btn.textContent='Guardar';btn.style.background='';},1500);
+  }catch(err){btn.textContent='Error';setTimeout(()=>{btn.style.display='none';btn.textContent='Guardar';},2000);}
+}
+
 // ── Stats tab ─────────────────────────────────────────────────────────────────
 let statsRangeStart=null, statsRangeEnd=null;
 function getDefaultStatsRange(){
@@ -1151,13 +1191,14 @@ async function renderStats(){
     const totalTapas=events.reduce((s,b)=>s+(parseInt(notes[b.id]?.food_tapas)||0),0);
     const totalFish=events.reduce((s,b)=>s+(parseInt(notes[b.id]?.food_fish)||0),0);
     const totalMeat=events.reduce((s,b)=>s+(parseInt(notes[b.id]?.food_meat)||0),0);
+    const totalVeggie=events.reduce((s,b)=>s+(parseInt(notes[b.id]?.food_veggie)||0),0);
 
     // Overall summary
     html+='<div class="stats-grid">';
     html+=statCard(events.length,'Tours totales','&#9981;');
     html+=statCard(totalPax,'Personas','&#128101;');
     html+=statCard(totalBalance.toLocaleString('es-ES')+'&#8364;','Balance total','&#128176;');
-    html+=statCard(totalTapas+totalFish+totalMeat,'Comidas servidas','&#127860;');
+    html+=statCard(totalTapas+totalFish+totalMeat+totalVeggie,'Comidas servidas','&#127860;');
     html+='</div>';
 
     // By boat
@@ -1230,6 +1271,7 @@ function showExport(){
     const tapas=parseInt(n.food_tapas)||0;
     const fish=parseInt(n.food_fish)||0;
     const meat=parseInt(n.food_meat)||0;
+    const veggie=parseInt(n.food_veggie)||0;
     if(i>0)text+='\n';
     // Line 1: boat, time, pax, skipper, flag
     text+='⛵ *'+boat+'* '+time+' → '+pax+'pax · 👤'+skipper+' '+flag+'\n';
@@ -1238,6 +1280,7 @@ function showExport(){
     if(tapas>0)foodParts.push((tapas!==pax?tapas+'x ':'')+' Tapas');
     if(fish>0)foodParts.push((fish!==pax?fish+'x ':'')+' Fish Paella');
     if(meat>0)foodParts.push((meat!==pax?meat+'x ':'')+' Meat Paella');
+    if(veggie>0)foodParts.push((veggie!==pax?veggie+'x ':'')+' Veggie Paella');
     const line2parts=[];
     if(foodParts.length>0)line2parts.push(foodParts.join('+'));
     if(n.comment)line2parts.push(n.comment);
