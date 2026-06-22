@@ -149,6 +149,25 @@
   .date-nav .current-date{font-family:'DM Serif Display',serif;font-size:1rem;color:var(--text);min-width:160px;text-align:center;}
   .date-picker-input{font-family:'Inter',sans-serif;font-size:0.85rem;padding:6px 10px;border:1.5px solid var(--border);border-radius:8px;color:var(--text);background:var(--white);outline:none;cursor:pointer;}
   .date-picker-input:focus{border-color:var(--blue);}
+  /* Arreglos tab */
+  .arreglos-summary{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:20px;background:var(--white);border:1.5px solid var(--border);border-radius:12px;padding:14px 18px;align-items:center;}
+  .arreglos-summary-item{display:flex;align-items:center;gap:6px;font-size:0.82rem;font-weight:600;color:var(--text);}
+  .arr-badge{border-radius:20px;padding:2px 9px;font-size:0.72rem;font-weight:700;color:#fff;background:var(--danger);}
+  .arr-badge.ok{background:#d1fae5;color:#065f46;}
+  .boat-section{background:var(--white);border:1.5px solid var(--border);border-radius:14px;padding:18px 20px;margin-bottom:14px;}
+  .boat-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
+  .boat-title{font-family:'DM Serif Display',serif;font-size:1.05rem;color:var(--text);}
+  .boat-count{border-radius:20px;padding:2px 10px;font-size:0.75rem;font-weight:700;background:var(--danger);color:#fff;}
+  .boat-count.zero{background:var(--border);color:var(--muted);}
+  .arreglo-item{display:flex;align-items:flex-start;gap:10px;padding:9px 0;border-bottom:1px solid var(--sand);}
+  .arreglo-item:last-child{border-bottom:none;}
+  .arreglo-text{font-size:0.88rem;color:var(--text);line-height:1.4;}
+  .arreglo-date{font-size:0.7rem;color:var(--muted);margin-top:2px;}
+  .arreglo-del{background:none;border:none;cursor:pointer;color:var(--muted);font-size:0.85rem;padding:4px 8px;border-radius:6px;transition:background 0.15s,color 0.15s;white-space:nowrap;}
+  .arreglo-del:hover{background:#fee2e2;color:var(--danger);}
+  .arreglo-add{display:flex;gap:8px;margin-top:12px;padding-top:12px;border-top:1px dashed var(--border);}
+  .arreglo-add input{flex:1;font-family:'Inter',sans-serif;font-size:0.85rem;padding:8px 12px;border:1.5px solid var(--border);border-radius:8px;color:var(--text);outline:none;}
+  .arreglo-add input:focus{border-color:var(--blue);}
   /* Stats tab */
   .stats-controls{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:20px;background:var(--white);border:1.5px solid var(--border);border-radius:12px;padding:14px 18px;}
   .stats-controls label{font-size:0.78rem;font-weight:600;color:var(--muted);}
@@ -219,6 +238,7 @@
   <div class="tab" onclick="switchTab('history')" id="tab-history">&#128337; Historico</div>
   <div class="tab" onclick="switchTab('payments')" id="tab-payments">&#128176; Pagos</div>
   <div class="tab" onclick="switchTab('stats')" id="tab-stats">&#128202; Estadisticas</div>
+  <div class="tab" onclick="switchTab('arreglos')" id="tab-arreglos">&#128295; Arreglos</div>
 </div>
 <main>
   <div id="loginScreen" style="display:none">
@@ -237,6 +257,7 @@
     <div id="view-history" style="display:none"></div>
     <div id="view-payments" style="display:none"></div>
     <div id="view-stats" style="display:none"></div>
+    <div id="view-arreglos" style="display:none"></div>
   </div>
 </main>
 
@@ -1335,11 +1356,92 @@ function copyExport(){
   });
 }
 
+// ── Arreglos tab ──────────────────────────────────────────────────────────────
+const BOATS=['Trui','Gambitero','Servus','RunWild','Jaleo'];
+let allArreglos=[];
+
+async function loadArreglos(){
+  const{data,error}=await sb.from('arreglos').select('*').order('created_at');
+  if(error)throw error;
+  allArreglos=data||[];
+}
+
+async function addArreglo(boat){
+  const inputEl=document.getElementById('arr-input-'+boat);
+  const text=(inputEl.value||'').trim();
+  if(!text)return;
+  inputEl.disabled=true;
+  try{
+    const{data,error}=await sb.from('arreglos').insert({barco:boat,descripcion:text}).select().single();
+    if(error)throw error;
+    allArreglos.push(data);
+    inputEl.value='';
+    renderArreglos();
+  }catch(err){alert('Error al añadir: '+err.message);}
+  finally{inputEl.disabled=false;}
+}
+
+async function deleteArreglo(id){
+  if(!confirm('¿Marcar como realizado y eliminar?'))return;
+  try{
+    const{error}=await sb.from('arreglos').delete().eq('id',id);
+    if(error)throw error;
+    allArreglos=allArreglos.filter(a=>a.id!==id);
+    renderArreglos();
+  }catch(err){alert('Error al eliminar: '+err.message);}
+}
+
+async function renderArreglos(){
+  const el=document.getElementById('view-arreglos');
+  el.innerHTML='<div class="state-screen"><div class="icon spinning">&#8635;</div><h2>Cargando...</h2></div>';
+  try{await loadArreglos();}catch(err){
+    el.innerHTML='<div class="state-screen"><div class="icon">&#9888;</div><h2>Error</h2><p>'+esc(err.message)+'</p></div>';
+    return;
+  }
+
+  // Tab badge (total)
+  const total=allArreglos.length;
+  const tabEl=document.getElementById('tab-arreglos');
+  tabEl.innerHTML='&#128295; Arreglos'+(total>0?' <span style="background:var(--danger);color:#fff;border-radius:20px;padding:1px 7px;font-size:0.7rem;font-weight:700;vertical-align:middle">'+total+'</span>':'');
+
+  // Summary bar
+  let html='<div class="arreglos-summary">';
+  for(const boat of BOATS){
+    const count=allArreglos.filter(a=>a.barco===boat).length;
+    html+='<div class="arreglos-summary-item">'+esc(boat)+' <span class="arr-badge'+(count===0?' ok':'')+'">'+(count===0?'OK':count)+'</span></div>';
+  }
+  html+='</div>';
+
+  // Boat sections
+  for(const boat of BOATS){
+    const items=allArreglos.filter(a=>a.barco===boat);
+    const count=items.length;
+    html+='<div class="boat-section">';
+    html+='<div class="boat-header"><span class="boat-title">&#9925; '+esc(boat)+'</span><span class="boat-count'+(count===0?' zero':'')+'">'+count+' pendiente'+(count!==1?'s':'')+'</span></div>';
+    if(items.length){
+      for(const item of items){
+        const d=new Date(item.created_at);
+        const dateStr=d.toLocaleDateString('es-ES',{day:'numeric',month:'short'})+' '+d.toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'});
+        html+='<div class="arreglo-item">';
+        html+='<div style="flex:1"><div class="arreglo-text">'+esc(item.descripcion)+'</div><div class="arreglo-date">'+dateStr+'</div></div>';
+        html+='<button class="arreglo-del" onclick="deleteArreglo(\''+item.id+'\')" title="Marcar como realizado">&#10003; Hecho</button>';
+        html+='</div>';
+      }
+    }else{
+      html+='<p style="font-size:0.85rem;color:var(--muted);margin:4px 0 10px">Sin arreglos pendientes &#10003;</p>';
+    }
+    html+='<div class="arreglo-add"><input id="arr-input-'+esc(boat)+'" type="text" placeholder="Describir arreglo necesario..." onkeydown="if(event.key===\'Enter\')addArreglo(\''+esc(boat)+'\')"/><button class="btn btn-blue" onclick="addArreglo(\''+esc(boat)+'\')">+ A&ntilde;adir</button></div>';
+    html+='</div>';
+  }
+
+  el.innerHTML=html;
+}
+
 // ── UI ────────────────────────────────────────────────────────────────────────
 function switchTab(tab){
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
   document.getElementById('tab-'+tab).classList.add('active');
-  ['today','tomorrow','week','history','payments','stats'].forEach(v=>{document.getElementById('view-'+v).style.display=v===tab?'block':'none';});
+  ['today','tomorrow','week','history','payments','stats','arreglos'].forEach(v=>{document.getElementById('view-'+v).style.display=v===tab?'block':'none';});
   if(tab==='history')renderHistory();
   if(tab==='payments'){
     const realToday=new Date();
@@ -1351,6 +1453,7 @@ function switchTab(tab){
     renderPayments();
   }
   if(tab==='stats')renderStats();
+  if(tab==='arreglos')renderArreglos();
 }
 function showLogin(){document.getElementById('loginScreen').style.display='flex';document.getElementById('appContent').style.display='none';document.getElementById('tabBar').style.display='none';document.getElementById('btnSync').style.display='none';document.getElementById('btnRefresh').style.display='none';document.getElementById('btnLogout').style.display='none';}
 function showApp(admin){
@@ -1388,6 +1491,7 @@ updateSyncInfo();
       document.getElementById('view-week').style.display='none';
       document.getElementById('view-history').style.display='none';
       document.getElementById('view-stats').style.display='none';
+      document.getElementById('view-arreglos').style.display='none';
       document.getElementById('view-payments').style.display='block';
       renderPayments();
     }
