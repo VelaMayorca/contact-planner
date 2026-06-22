@@ -1062,7 +1062,7 @@ function renderPaymentCard(b){
   }else{
     html+='<div class="booking-title">'+(flag?flag+' ':'&#129489; ')+esc(clientName||'Sin nombre')+'</div>';
   }
-  if(isAdmin&&n.balance)html+='<div class="pay-amount-big">&#128176; <span>'+balance+'</span></div>';
+  if(isAdmin)html+='<div class="pay-amount-big">&#128176; <span>'+balance+'</span></div>';
   html+='<div class="booking-meta">';
   if(b.parsed.pax)html+='<span class="meta-chip chip-pax">&#128101; '+esc(b.parsed.pax)+' pax</span>';
   html+='<span class="meta-chip chip-boat">&#128674; '+esc(boat)+'</span>';
