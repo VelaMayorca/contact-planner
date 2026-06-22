@@ -408,7 +408,7 @@ async function loadFromSupabase(){
     const wEnd=new Date(tom);wEnd.setDate(tom.getDate()+6);
     const wStr=toDateStr(wEnd);
     const[events,notesMap]=await Promise.all([loadEventsFromSupabase(todayStr,wStr),loadAllNotes()]);
-    allNotes=notesMap;allBookings=events;
+    allNotes=notesMap;allBookings=events.filter((b,i,arr)=>arr.findIndex(x=>x.id===b.id)===i);
 
     renderToday();
     renderTomorrow();
@@ -1372,17 +1372,18 @@ async function loadArreglos(){
 
 async function addArreglo(boat){
   const inputEl=document.getElementById('arr-input-'+boat);
+  if(inputEl.dataset.adding==='1')return;
   const text=(inputEl.value||'').trim();
   if(!text)return;
+  inputEl.dataset.adding='1';
   inputEl.disabled=true;
   try{
     const{data,error}=await sb.from('arreglos').insert({barco:boat,descripcion:text}).select().single();
     if(error)throw error;
-    allArreglos.push(data);
     inputEl.value='';
     renderArreglos();
   }catch(err){alert('Error al añadir: '+err.message);}
-  finally{inputEl.disabled=false;}
+  finally{inputEl.disabled=false;delete inputEl.dataset.adding;}
 }
 
 async function deleteArreglo(id){
@@ -1453,17 +1454,18 @@ async function loadCompras(){
 
 async function addCompra(tienda){
   const inputEl=document.getElementById('compra-input-'+tienda);
+  if(inputEl.dataset.adding==='1')return;
   const text=(inputEl.value||'').trim();
   if(!text)return;
+  inputEl.dataset.adding='1';
   inputEl.disabled=true;
   try{
     const{data,error}=await sb.from('compras').insert({tienda,descripcion:text}).select().single();
     if(error)throw error;
-    allCompras.push(data);
     inputEl.value='';
     renderCompras();
   }catch(err){alert('Error al añadir: '+err.message);}
-  finally{inputEl.disabled=false;}
+  finally{inputEl.disabled=false;delete inputEl.dataset.adding;}
 }
 
 async function deleteCompra(id){
