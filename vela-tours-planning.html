@@ -1089,7 +1089,11 @@ function renderPaymentCard(b){
   if(rating===3&&isPastBooking){
     const waNum=phone?buildWa(phone):'';
     const nombre=(clientName||'').split(' ')[0]||'';
-    const waMsg=encodeURIComponent('Hola '+nombre+', gracias por confiar en Vela Mayorca. ¿Podrías dejarnos una reseña en Google? Tu opinión nos ayuda mucho 🙏');
+    const isEduSkipper=skipper.toLowerCase()==='edu';
+    const waMsgText=isEduSkipper
+      ?'Hi '+nombre+'\u{1F60A}\n\nThank you so much for the tour yesterday — I had a really great time with you! I truly hope you enjoyed the experience as much as I did. It was a pleasure having you on board \u{1FAF6}\u{1F3FB}\n\nIf you were happy with the tour, it would mean a lot to me if you could leave a short review on Google — it really helps us a lot \u{1F64F}\n\n\u{1F517}⭐\u{1F447}\nhttps://maps.app.goo.gl/69mncXN9bJmLcQVZ6\n\nAlso, if you ever need any tips or help for Spain or Mallorca in the future, feel free to reach out — I\'ll be more than happy to help!\n\nI hope you had an amazing stay in Mallorca these days and that we see you again someday ☀️⛵️\n\nThanks again!\nEdu'
+      :'Hi '+nombre+'! How are you??\n\nThanks for the tour yesterday!\n\n'+skipper+' told me it was a great time with you. I really hope you enjoyed the time on the boat ☺️\n\nIn case you were happy with the tour and may want to write a small review on Google - it would be a huge help for us.\nPlease contact us for any help or tips you might need about Spain or Mallorca in the future; We will be really glad to help you.\n\nI wish you enjoyed your time in Mallorca and come back someday!\n\nThanks again!!\nEdu&'+skipper+'\n\n\u{1F517}\u{1F447}☺️\nhttps://maps.app.goo.gl/69mncXN9bJmLcQVZ6';
+    const waMsg=encodeURIComponent(waMsgText);
     const reviewRequested=!!n.review_requested;
     html+='<div class="review-request-row">';
     if(waNum)html+='<a class="btn-wa-review" href="https://wa.me/'+waNum+'?text='+waMsg+'" target="_blank">&#128172; Pedir review</a>';
