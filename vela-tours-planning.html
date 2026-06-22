@@ -188,6 +188,11 @@
   .stats-row-balance{color:var(--success);font-weight:700;}
   .pay-amount-big{font-size:1.05rem;font-weight:800;color:#b45309;margin-top:3px;display:flex;align-items:center;gap:5px;}
   .pay-amount-big span{font-family:'DM Serif Display',serif;font-size:1.15rem;}
+  .review-request-row{display:flex;align-items:center;gap:10px;margin-top:8px;padding-top:8px;border-top:1px dashed var(--border);flex-wrap:wrap;}
+  .btn-wa-review{background:#25d366;color:#fff;border-radius:8px;padding:5px 14px;font-size:0.8rem;font-weight:700;text-decoration:none;display:inline-flex;align-items:center;gap:5px;}
+  .btn-wa-review:hover{opacity:0.88;}
+  .review-pedida-check{display:flex;align-items:center;gap:6px;font-size:0.82rem;font-weight:600;color:var(--text);cursor:pointer;}
+  .review-pedida-check input{width:16px;height:16px;cursor:pointer;accent-color:var(--success);}
   /* Payments tab */
   .payment-card{margin-bottom:12px;}
   .payment-controls{padding:0 18px 16px;border-top:1.5px solid var(--border);margin-top:4px;padding-top:14px;}
@@ -1078,6 +1083,19 @@ function renderPaymentCard(b){
   html+='<button class="review-btn '+reviewYesActive+'" onclick="setRating(\''+sid+'\',\''+esc(b.id)+'\',3)">Sí</button>';
   html+='<button class="review-btn '+reviewNoActive+'" onclick="setRating(\''+sid+'\',\''+esc(b.id)+'\',1)">No</button>';
   html+='</div>';
+  // Review request row: only if rated Sí AND booking is from yesterday or older
+  const todayStr2=toDateStr(new Date());
+  const isPastBooking=b.date<todayStr2;
+  if(rating===3&&isPastBooking){
+    const waNum=phone?buildWa(phone):'';
+    const nombre=(clientName||'').split(' ')[0]||'';
+    const waMsg=encodeURIComponent('Hola '+nombre+', gracias por confiar en Vela Mayorca. ¿Podrías dejarnos una reseña en Google? Tu opinión nos ayuda mucho 🙏');
+    const reviewRequested=!!n.review_requested;
+    html+='<div class="review-request-row">';
+    if(waNum)html+='<a class="btn-wa-review" href="https://wa.me/'+waNum+'?text='+waMsg+'" target="_blank">&#128172; Pedir review</a>';
+    html+='<label class="review-pedida-check" onclick="event.stopPropagation()"><input type="checkbox" '+(reviewRequested?'checked':'')+' onchange="setReviewRequested(\''+sid+'\',\''+esc(b.id)+'\',this.checked)"/> Pedida</label>';
+    html+='</div>';
+  }
   html+='</div>';
 
   // Payment method selector - RunWild and Jaleo only have Cash + TPV BTP
@@ -1182,6 +1200,14 @@ async function setCashDelivered(sid,eventId,checked){
     await upsertNote(eventId,{...existing,cash_delivered:checked});
     allNotes[eventId]={...existing,cash_delivered:checked};
   }catch(err){alert('Error guardando estado de entrega: '+err.message);}
+}
+
+async function setReviewRequested(sid,eventId,checked){
+  const existing=allNotes[eventId]||{};
+  try{
+    await upsertNote(eventId,{...existing,review_requested:checked});
+    allNotes[eventId]={...existing,review_requested:checked};
+  }catch(err){alert('Error guardando: '+err.message);}
 }
 
 async function setRating(sid,eventId,stars){
