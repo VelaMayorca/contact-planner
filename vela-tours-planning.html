@@ -186,6 +186,8 @@
   .stats-row:last-child{border-bottom:none;}
   .stats-row-label{font-weight:600;color:var(--text);flex:1;}
   .stats-row-balance{color:var(--success);font-weight:700;}
+  .pay-amount-big{font-size:1.05rem;font-weight:800;color:#b45309;margin-top:3px;display:flex;align-items:center;gap:5px;}
+  .pay-amount-big span{font-family:'DM Serif Display',serif;font-size:1.15rem;}
   /* Payments tab */
   .payment-card{margin-bottom:12px;}
   .payment-controls{padding:0 18px 16px;border-top:1.5px solid var(--border);margin-top:4px;padding-top:14px;}
@@ -1060,12 +1062,12 @@ function renderPaymentCard(b){
   }else{
     html+='<div class="booking-title">'+(flag?flag+' ':'&#129489; ')+esc(clientName||'Sin nombre')+'</div>';
   }
+  if(isAdmin&&n.balance)html+='<div class="pay-amount-big">&#128176; <span>'+balance+'</span></div>';
   html+='<div class="booking-meta">';
   if(b.parsed.pax)html+='<span class="meta-chip chip-pax">&#128101; '+esc(b.parsed.pax)+' pax</span>';
   html+='<span class="meta-chip chip-boat">&#128674; '+esc(boat)+'</span>';
   html+='<span class="meta-chip chip-type">&#128081; '+esc(skipper)+'</span>';
   if(foodIcon)html+='<span class="meta-chip chip-type">'+foodIcon+'</span>';
-  if(isAdmin)html+='<span class="meta-chip" style="background:#fef3c7;color:#b45309;font-weight:700">&#128176; '+balance+'</span>';
   html+='</div></div>';
   // Review row
   const reviewYesActive=rating===3?'active-yes':'';
@@ -1483,7 +1485,7 @@ async function renderCompras(){
   let html='';
   for(const tienda of TIENDAS){
     const items=allCompras.filter(c=>c.tienda===tienda);
-    const iconos={'Mercadona':'&#127812;','Chino':'&#129689;','Tienda Náutica':'&#9875;','Otros':'&#128717;'};
+    const iconos={'Mercadona':'&#128722;','Chino':'&#127982;','Tienda Náutica':'&#9875;','Otros':'&#128717;'};
     html+='<div class="boat-section">';
     html+='<div class="boat-header"><span class="boat-title">'+(iconos[tienda]||'&#128722;')+' '+esc(tienda)+'</span></div>';
     if(items.length){
