@@ -717,7 +717,8 @@ function renderCard(b){
   html+='<div class="divider-v"></div>';
   html+='<div class="info-col" onclick="toggleNotes(\''+sid+'\',\''+esc(b.id)+'\')">';
   html+='<div class="booking-title">'+esc(b.title)+(isReady?'<span class="ready-badge">&#10003; LISTO</span>':'')+'</div>';
-  if(p.buyer)html+='<div class="booking-buyer">&#129489; '+esc(p.buyer)+'</div>';
+  const planClientName=n.client_name||p.buyer||'';
+  html+='<div class="booking-buyer client-name-row">&#129489; <input class="client-name-input" id="clientname-'+sid+'" value="'+esc(planClientName)+'" placeholder="Nombre cliente" oninput="onClientNameInput(\''+sid+'\')" onblur="onClientNameBlur(\''+sid+'\')" onclick="event.stopPropagation()"/><button class="btn-phone-save" id="clientnamesave-'+sid+'" onclick="saveClientName(\''+sid+'\',\''+esc(b.id)+'\');event.stopPropagation()">Guardar</button></div>';
   if(p.email)html+='<div class="booking-email">&#9993; '+esc(p.email)+'</div>';
   html+='<div class="booking-meta">';
   if(p.pax)html+='<span class="meta-chip chip-pax">&#128101; '+esc(p.pax)+' pax</span>';
