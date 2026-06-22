@@ -230,6 +230,7 @@
     <div class="today-badge" id="todayBadge"></div>
     <button class="btn btn-teal" id="btnSync" onclick="syncCalendar()" style="display:none">&#8645; Sync</button>
     <button class="btn btn-blue" id="btnRefresh" onclick="loadFromSupabase()" style="display:none">&#8635;</button>
+    <button class="btn" id="btnEmployeeView" onclick="window.open(location.pathname+'?view=pagos','_blank')" style="display:none;background:#f1f5f9;color:var(--text)">&#128065; Empleado</button>
     <button class="btn btn-danger" id="btnLogout" onclick="logout()" style="display:none">Salir</button>
   </div>
 </header>
@@ -1062,7 +1063,7 @@ function renderPaymentCard(b){
   }else{
     html+='<div class="booking-title">'+(flag?flag+' ':'&#129489; ')+esc(clientName||'Sin nombre')+'</div>';
   }
-  if(isAdmin)html+='<div class="pay-amount-big">&#128176; <span>'+balance+'</span></div>';
+  html+='<div class="pay-amount-big">&#128176; <span>'+balance+'</span></div>';
   html+='<div class="booking-meta">';
   if(b.parsed.pax)html+='<span class="meta-chip chip-pax">&#128101; '+esc(b.parsed.pax)+' pax</span>';
   html+='<span class="meta-chip chip-boat">&#128674; '+esc(boat)+'</span>';
@@ -1523,7 +1524,7 @@ function switchTab(tab){
   if(tab==='arreglos')renderArreglos();
   if(tab==='compras')renderCompras();
 }
-function showLogin(){document.getElementById('loginScreen').style.display='flex';document.getElementById('appContent').style.display='none';document.getElementById('tabBar').style.display='none';document.getElementById('btnSync').style.display='none';document.getElementById('btnRefresh').style.display='none';document.getElementById('btnLogout').style.display='none';}
+function showLogin(){document.getElementById('loginScreen').style.display='flex';document.getElementById('appContent').style.display='none';document.getElementById('tabBar').style.display='none';document.getElementById('btnSync').style.display='none';document.getElementById('btnRefresh').style.display='none';document.getElementById('btnEmployeeView').style.display='none';document.getElementById('btnLogout').style.display='none';}
 function showApp(admin){
   document.getElementById('loginScreen').style.display='none';
   document.getElementById('appContent').style.display='block';
@@ -1535,7 +1536,7 @@ function showApp(admin){
   }else{
     document.getElementById('tabBar').style.display='flex';
     document.getElementById('btnRefresh').style.display='inline-flex';
-    if(admin||isAdmin){document.getElementById('btnSync').style.display='inline-flex';document.getElementById('btnLogout').style.display='inline-flex';}
+    if(admin||isAdmin){document.getElementById('btnSync').style.display='inline-flex';document.getElementById('btnEmployeeView').style.display='inline-flex';document.getElementById('btnLogout').style.display='inline-flex';}
   }
 }
 function showLoading(msg){['tomorrow','week'].forEach(v=>{document.getElementById('view-'+v).innerHTML='<div class="state-screen"><div class="icon spinning">&#8635;</div><h2>'+(msg||'Cargando...')+'</h2></div>';});}
