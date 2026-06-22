@@ -1416,7 +1416,7 @@ async function renderArreglos(){
     const items=allArreglos.filter(a=>a.barco===boat);
     const count=items.length;
     html+='<div class="boat-section">';
-    html+='<div class="boat-header"><span class="boat-title">&#9925; '+esc(boat)+'</span><span class="boat-count'+(count===0?' zero':'')+'">'+count+' pendiente'+(count!==1?'s':'')+'</span></div>';
+    html+='<div class="boat-header"><span class="boat-title">&#9973; '+esc(boat)+'</span><span class="boat-count'+(count===0?' zero':'')+'">'+count+' pendiente'+(count!==1?'s':'')+'</span></div>';
     if(items.length){
       for(const item of items){
         const d=new Date(item.created_at);
