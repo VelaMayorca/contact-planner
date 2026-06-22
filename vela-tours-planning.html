@@ -183,11 +183,13 @@
   .client-name-row{display:flex;align-items:center;gap:6px;}
   .client-name-input{font-family:'DM Serif Display',serif;font-size:0.95rem;color:var(--text);border:none;outline:none;background:transparent;flex:1;min-width:100px;cursor:text;}
   .client-name-input:focus{border-bottom:2px solid var(--blue);background:#f0f8ff;border-radius:4px 4px 0 0;padding:2px 4px;}
-  /* Star rating */
-  .star-rating{display:flex;gap:2px;margin-top:8px;}
-  .star{font-size:1.3rem;color:var(--border);cursor:pointer;transition:color 0.15s,transform 0.1s;line-height:1;}
-  .star:hover{transform:scale(1.15);}
-  .star.filled{color:#f5a623;}
+  /* Review row */
+  .review-row{display:flex;align-items:center;gap:8px;margin-top:8px;}
+  .review-label{font-size:0.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.05em;}
+  .review-btn{font-size:0.78rem;font-weight:700;padding:3px 12px;border-radius:20px;border:1.5px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;transition:background 0.15s,color 0.15s,border-color 0.15s;}
+  .review-btn:hover{border-color:var(--blue);color:var(--blue);}
+  .review-btn.active-yes{background:#d1fae5;border-color:#059669;color:#065f46;}
+  .review-btn.active-no{background:#fee2e2;border-color:#dc2626;color:#991b1b;}
   /* Split payment */
   .split-payment-row{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-top:12px;padding-top:12px;border-top:1px dashed var(--border);}
   .split-amount-field{flex:1;min-width:120px;}
@@ -355,7 +357,7 @@ async function syncCalendar(silent){
     const wEnd=new Date(today);wEnd.setDate(today.getDate()+14);wEnd.setHours(23,59,59,999); // 2 weeks from today
     const allEventsArr=await Promise.all(calIds.map(id=>fetchGoogleEvents(id,today,wEnd)));
     const events=allEventsArr.flat();
-    const bookings=events.map(parseEvent);
+    const bookings=events.flatMap(parseEvents);
     await saveEventsToSupabase(bookings);
     await loadFromSupabase();
   }catch(err){if(!silent)showError('Error sync: '+err.message);}
@@ -515,17 +517,32 @@ function renderView(bookings,cid,isTomorrow,isToday){
 }
 
 // ── Parse ─────────────────────────────────────────────────────────────────────
-function parseEvent(ev){
+function parseEvents(ev){
   const raw=ev.description||'';
   const desc=raw.replace(/<br\s*\/?>/gi,' ').replace(/<[^>]+>/g,' ').replace(/&nbsp;/g,' ').replace(/\s+/g,' ').trim();
-  const get=re=>{const m=desc.match(re);return m?(m[1]||'').trim():'';};
-  const buyer=get(/Buyer:\s*(.+?)(?=Customer Phone:|Customer Email:|$)/i);
-  const phone=(get(/Customer Phone:\s*(\S+)/i)||get(/Phone:\s*(\S+)/i)).replace(/[<>]/g,'');
-  const email=(get(/Customer Email:\s*(\S+)/i)||get(/Email:\s*(\S+)/i)).replace(/[<>[\]]/g,'');
-  const pax=get(/N[uú]mero de participantes:\s*(\d+)/i)||get(/participants?:\s*(\d+)/i)||get(/(\d+)\s*pax/i);
-  const variant=get(/Variation Name:\s*(.+?)(?=Buyer:|Customer|$)/i);
   const start=ev.start?.dateTime||ev.start?.date||'';
-  return{id:ev.id,title:ev.summary||'Sin titulo',start,end:ev.end?.dateTime||ev.end?.date||'',date:start.split('T')[0],parsed:{buyer,phone,email,pax,variant}};
+  const base={title:ev.summary||'Sin titulo',start,end:ev.end?.dateTime||ev.end?.date||'',date:start.split('T')[0]};
+
+  // Detectar múltiples reservas: dividir por bloques "Variation Name:" o "Buyer:"
+  let blocks;
+  if((desc.match(/Variation Name:/gi)||[]).length>1){
+    blocks=desc.split(/(?=Variation Name:)/i).filter(s=>s.trim()&&/Buyer:/i.test(s));
+  }else if((desc.match(/Buyer:/gi)||[]).length>1){
+    blocks=desc.split(/(?=Buyer:)/i).filter(s=>s.trim()&&/Buyer:/i.test(s));
+  }else{
+    blocks=[desc];
+  }
+
+  return blocks.map((block,i)=>{
+    const get=re=>{const m=block.match(re);return m?(m[1]||'').trim():'';};
+    const buyer=get(/Buyer:\s*(.+?)(?=Customer Phone:|Customer Email:|N[uú]mero|$)/i);
+    const phone=(get(/Customer Phone:\s*(\S+)/i)||get(/Phone:\s*(\S+)/i)).replace(/[<>]/g,'');
+    const email=(get(/Customer Email:\s*(\S+)/i)||get(/Email:\s*(\S+)/i)).replace(/[<>[\]]/g,'');
+    const pax=get(/N[uú]mero de participantes:\s*(\d+)/i)||get(/participants?:\s*(\d+)/i)||get(/(\d+)\s*pax/i);
+    const variant=get(/Variation Name:\s*(.+?)(?=Buyer:|Customer|N[uú]mero|$)/i);
+    const id=blocks.length>1?ev.id+'_'+i:ev.id;
+    return{...base,id,parsed:{buyer,phone,email,pax,variant}};
+  });
 }
 
 // ── Prefix ────────────────────────────────────────────────────────────────────
@@ -1026,11 +1043,13 @@ function renderPaymentCard(b){
   if(foodIcon)html+='<span class="meta-chip chip-type">'+foodIcon+'</span>';
   if(isAdmin)html+='<span class="meta-chip" style="background:#fef3c7;color:#b45309;font-weight:700">&#128176; '+balance+'</span>';
   html+='</div></div>';
-  // Star rating
-  html+='<div class="star-rating">';
-  for(let s=1;s<=3;s++){
-    html+='<span class="star '+(s<=rating?'filled':'')+'" onclick="setRating(\''+sid+'\',\''+esc(b.id)+'\','+s+')">&#9733;</span>';
-  }
+  // Review row
+  const reviewYesActive=rating===3?'active-yes':'';
+  const reviewNoActive=rating===1?'active-no':'';
+  html+='<div class="review-row">';
+  html+='<span class="review-label">Review</span>';
+  html+='<button class="review-btn '+reviewYesActive+'" onclick="setRating(\''+sid+'\',\''+esc(b.id)+'\',3)">Sí</button>';
+  html+='<button class="review-btn '+reviewNoActive+'" onclick="setRating(\''+sid+'\',\''+esc(b.id)+'\',1)">No</button>';
   html+='</div>';
   html+='</div>';
 
@@ -1142,7 +1161,7 @@ async function setRating(sid,eventId,stars){
   const existing=allNotes[eventId]||{};
   const newRating=existing.rating===stars?null:stars; // toggle off if clicking same value
 
-  // 3 stars triggers a confirmation since it implies asking the client for a review
+  // Sí (stars===3) triggers a confirmation
   if(stars===3&&newRating===3){
     const confirmed=confirm('¿Confirmas que debemos pedir review al cliente de este tour?');
     if(!confirmed)return;
