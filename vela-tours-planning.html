@@ -239,6 +239,7 @@
   <div class="tab" onclick="switchTab('payments')" id="tab-payments">&#128176; Pagos</div>
   <div class="tab" onclick="switchTab('stats')" id="tab-stats">&#128202; Estadisticas</div>
   <div class="tab" onclick="switchTab('arreglos')" id="tab-arreglos">&#128295; Arreglos</div>
+  <div class="tab" onclick="switchTab('compras')" id="tab-compras">&#128722; Compras</div>
 </div>
 <main>
   <div id="loginScreen" style="display:none">
@@ -258,6 +259,7 @@
     <div id="view-payments" style="display:none"></div>
     <div id="view-stats" style="display:none"></div>
     <div id="view-arreglos" style="display:none"></div>
+    <div id="view-compras" style="display:none"></div>
   </div>
 </main>
 
@@ -1436,11 +1438,75 @@ async function renderArreglos(){
   el.innerHTML=html;
 }
 
+// ── Compras tab ───────────────────────────────────────────────────────────────
+const TIENDAS=['Mercadona','Chino','Tienda Náutica','Otros'];
+let allCompras=[];
+
+async function loadCompras(){
+  const{data,error}=await sb.from('compras').select('*').order('created_at');
+  if(error)throw error;
+  allCompras=data||[];
+}
+
+async function addCompra(tienda){
+  const inputEl=document.getElementById('compra-input-'+tienda);
+  const text=(inputEl.value||'').trim();
+  if(!text)return;
+  inputEl.disabled=true;
+  try{
+    const{data,error}=await sb.from('compras').insert({tienda,descripcion:text}).select().single();
+    if(error)throw error;
+    allCompras.push(data);
+    inputEl.value='';
+    renderCompras();
+  }catch(err){alert('Error al añadir: '+err.message);}
+  finally{inputEl.disabled=false;}
+}
+
+async function deleteCompra(id){
+  try{
+    const{error}=await sb.from('compras').delete().eq('id',id);
+    if(error)throw error;
+    allCompras=allCompras.filter(c=>c.id!==id);
+    renderCompras();
+  }catch(err){alert('Error al eliminar: '+err.message);}
+}
+
+async function renderCompras(){
+  const el=document.getElementById('view-compras');
+  el.innerHTML='<div class="state-screen"><div class="icon spinning">&#8635;</div><h2>Cargando...</h2></div>';
+  try{await loadCompras();}catch(err){
+    el.innerHTML='<div class="state-screen"><div class="icon">&#9888;</div><h2>Error</h2><p>'+esc(err.message)+'</p></div>';
+    return;
+  }
+
+  let html='';
+  for(const tienda of TIENDAS){
+    const items=allCompras.filter(c=>c.tienda===tienda);
+    const iconos={'Mercadona':'&#127812;','Chino':'&#129689;','Tienda Náutica':'&#9875;','Otros':'&#128717;'};
+    html+='<div class="boat-section">';
+    html+='<div class="boat-header"><span class="boat-title">'+(iconos[tienda]||'&#128722;')+' '+esc(tienda)+'</span></div>';
+    if(items.length){
+      for(const item of items){
+        html+='<div class="arreglo-item">';
+        html+='<div style="flex:1"><div class="arreglo-text">'+esc(item.descripcion)+'</div></div>';
+        html+='<button class="arreglo-del" onclick="deleteCompra(\''+item.id+'\')" title="Eliminar">&#10005;</button>';
+        html+='</div>';
+      }
+    }else{
+      html+='<p style="font-size:0.85rem;color:var(--muted);margin:4px 0 10px">Sin productos en la lista</p>';
+    }
+    html+='<div class="arreglo-add"><input id="compra-input-'+esc(tienda)+'" type="text" placeholder="A&ntilde;adir producto..." onkeydown="if(event.key===\'Enter\')addCompra(\''+esc(tienda)+'\')"/><button class="btn btn-blue" onclick="addCompra(\''+esc(tienda)+'\')">+ A&ntilde;adir</button></div>';
+    html+='</div>';
+  }
+  el.innerHTML=html;
+}
+
 // ── UI ────────────────────────────────────────────────────────────────────────
 function switchTab(tab){
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
   document.getElementById('tab-'+tab).classList.add('active');
-  ['today','tomorrow','week','history','payments','stats','arreglos'].forEach(v=>{document.getElementById('view-'+v).style.display=v===tab?'block':'none';});
+  ['today','tomorrow','week','history','payments','stats','arreglos','compras'].forEach(v=>{document.getElementById('view-'+v).style.display=v===tab?'block':'none';});
   if(tab==='history')renderHistory();
   if(tab==='payments'){
     const realToday=new Date();
@@ -1453,6 +1519,7 @@ function switchTab(tab){
   }
   if(tab==='stats')renderStats();
   if(tab==='arreglos')renderArreglos();
+  if(tab==='compras')renderCompras();
 }
 function showLogin(){document.getElementById('loginScreen').style.display='flex';document.getElementById('appContent').style.display='none';document.getElementById('tabBar').style.display='none';document.getElementById('btnSync').style.display='none';document.getElementById('btnRefresh').style.display='none';document.getElementById('btnLogout').style.display='none';}
 function showApp(admin){
