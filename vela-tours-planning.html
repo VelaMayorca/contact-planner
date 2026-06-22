@@ -536,7 +536,8 @@ function parseEvents(ev){
   return blocks.map((block,i)=>{
     const get=re=>{const m=block.match(re);return m?(m[1]||'').trim():'';};
     const buyer=get(/Buyer:\s*(.+?)(?=Customer Phone:|Customer Email:|N[uú]mero|$)/i);
-    const phone=(get(/Customer Phone:\s*(\S+)/i)||get(/Phone:\s*(\S+)/i)).replace(/[<>]/g,'');
+    const rawPhone=(get(/Customer Phone:\s*(.+?)(?=Customer Email:|N[uú]mero|Buyer:|Variation Name:|More information|$)/i)||get(/Phone:\s*(.+?)(?=Customer Email:|N[uú]mero|Buyer:|Variation Name:|More information|$)/i)).replace(/[<>]/g,'').trim();
+    const phone=rawPhone.replace(/[^0-9]/g,'').length<=2?'':rawPhone;
     const email=(get(/Customer Email:\s*(\S+)/i)||get(/Email:\s*(\S+)/i)).replace(/[<>[\]]/g,'');
     const pax=get(/N[uú]mero de participantes:\s*(\d+)/i)||get(/participants?:\s*(\d+)/i)||get(/(\d+)\s*pax/i);
     const variant=get(/Variation Name:\s*(.+?)(?=Buyer:|Customer|N[uú]mero|$)/i);
