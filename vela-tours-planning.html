@@ -510,7 +510,7 @@ function renderView(bookings,cid,isTomorrow,isToday){
   let adminBar='';
   if(isAdmin&&isTomorrow){adminBar='<div class="admin-bar"><span>&#128274; Modo <strong>Admin</strong></span><button class="btn btn-teal" onclick="syncCalendar()" style="padding:5px 10px;font-size:0.76rem">&#8645; Sincronizar</button></div>';}
 
-  let exportBtn=isTomorrow?'<button class="btn btn-export btn-sm" onclick="showExport()">&#128203; Exportar</button>':'';
+  let exportBtn=(isTomorrow||isToday)?'<button class="btn btn-export btn-sm" onclick="showExport()">&#128203; Exportar</button>':'';
 
   let html=filters+adminBar+progressRing;
   html+='<div class="top-bar"><div class="summary-bar">';
