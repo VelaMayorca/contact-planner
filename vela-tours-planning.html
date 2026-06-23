@@ -722,7 +722,7 @@ function renderCard(b){
   html+='<div class="booking-buyer client-name-row">&#129489; <input class="client-name-input" id="clientname-'+sid+'" value="'+esc(planClientName)+'" placeholder="Nombre cliente" oninput="onClientNameInput(\''+sid+'\')" onblur="onClientNameBlur(\''+sid+'\')" onclick="event.stopPropagation()"/><button class="btn-phone-save" id="clientnamesave-'+sid+'" onclick="saveClientName(\''+sid+'\',\''+esc(b.id)+'\');event.stopPropagation()">Guardar</button></div>';
   if(p.email)html+='<div class="booking-email">&#9993; '+esc(p.email)+'</div>';
   html+='<div class="booking-meta">';
-  if(p.pax)html+='<span class="meta-chip chip-pax">&#128101; '+esc(p.pax)+' pax</span>';
+  const displayPax=n.pax||p.pax;if(displayPax)html+='<span class="meta-chip chip-pax">&#128101; '+esc(displayPax)+' pax</span>';
   if(boat)html+='<span class="meta-chip chip-boat">&#128674; '+esc(boat)+'</span>';
   if(skipper)html+='<span class="meta-chip chip-type">&#128081; '+esc(skipper)+'</span>';
   if(p.variant)html+='<span class="meta-chip chip-type">'+esc(p.variant)+'</span>';
