@@ -423,8 +423,12 @@ async function loadFromSupabase(){
     const wEnd=new Date(tom);wEnd.setDate(tom.getDate()+6);
     const wStr=toDateStr(wEnd);
     const[events,notesMap]=await Promise.all([loadEventsFromSupabase(todayStr,wStr),loadAllNotes()]);
-    const baseId=id=>id.replace(/_\d+$/,'');
-    allNotes=notesMap;allBookings=events.filter((b,i,arr)=>arr.findIndex(x=>baseId(x.id)===baseId(b.id)&&x.parsed.buyer===b.parsed.buyer)===i);
+    allNotes=notesMap;
+    // Dedup by start+buyer: when duplicates exist, keep the row with most notes data filled
+    const noteScore=id=>{const n=notesMap[id]||{};return(n.skipper?2:0)+(n.boat?2:0)+(n.phone?1:0)+(n.balance?1:0);};
+    allBookings=events
+      .sort((a,b)=>noteScore(b.id)-noteScore(a.id))
+      .filter((b,i,arr)=>arr.findIndex(x=>x.start===b.start&&x.parsed.buyer===b.parsed.buyer)===i);
 
     renderToday();
     renderTomorrow();
