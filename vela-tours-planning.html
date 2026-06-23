@@ -190,6 +190,8 @@
   .pay-amount-big span{font-family:'DM Serif Display',serif;font-size:1.15rem;}
   .review-request-row{display:flex;align-items:center;gap:10px;margin-top:8px;padding-top:8px;border-top:1px dashed var(--border);flex-wrap:wrap;}
   .btn-wa-review{background:#25d366;color:#fff;border-radius:8px;padding:5px 14px;font-size:0.8rem;font-weight:700;text-decoration:none;display:inline-flex;align-items:center;gap:5px;}
+  .pay-phone-row{display:flex;align-items:center;gap:10px;padding:4px 18px 6px;flex-wrap:wrap;}
+  .pay-phone-num{font-size:0.82rem;color:var(--muted);}
   .btn-wa-review:hover{opacity:0.88;}
   .review-pedida-check{display:flex;align-items:center;gap:6px;font-size:0.82rem;font-weight:600;color:var(--text);cursor:pointer;}
   .review-pedida-check input{width:16px;height:16px;cursor:pointer;accent-color:var(--success);}
@@ -244,7 +246,7 @@
   <div class="tab active" onclick="switchTab('tomorrow')" id="tab-tomorrow">&#128197; Manana</div>
   <div class="tab" onclick="switchTab('week')" id="tab-week">&#128197; Semana</div>
   <div class="tab" onclick="switchTab('history')" id="tab-history">&#128337; Historico</div>
-  <div class="tab" onclick="switchTab('payments')" id="tab-payments">&#128176; Pagos</div>
+  <div class="tab" onclick="switchTab('payments')" id="tab-payments">&#9973; Tours</div>
   <div class="tab" onclick="switchTab('stats')" id="tab-stats">&#128202; Estadisticas</div>
   <div class="tab" onclick="switchTab('arreglos')" id="tab-arreglos">&#128295; Arreglos</div>
   <div class="tab" onclick="switchTab('compras')" id="tab-compras">&#128722; Compras</div>
@@ -386,10 +388,18 @@ async function syncCalendar(silent){
     const calIds=await getCalendarIds();
     const today=new Date();today.setHours(0,0,0,0);
     const wEnd=new Date(today);wEnd.setDate(today.getDate()+14);wEnd.setHours(23,59,59,999); // 2 weeks from today
+    const todayStr=toDateStr(today);
+    const wEndStr=toDateStr(wEnd);
     const allEventsArr=await Promise.all(calIds.map(id=>fetchGoogleEvents(id,today,wEnd)));
     const events=allEventsArr.flat();
     const bookings=events.flatMap(parseEvents);
     await saveEventsToSupabase(bookings);
+    // Delete Supabase rows in this date range that no longer exist in the calendar
+    if(bookings.length>0){
+      const validIds=bookings.map(b=>b.id);
+      const idList='('+validIds.map(id=>'"'+id+'"').join(',')+')';
+      await sb.from('eventos').delete().gte('date',todayStr).lte('date',wEndStr).not('id','in',idList);
+    }
     await loadFromSupabase();
   }catch(err){if(!silent)showError('Error sync: '+err.message);}
   if(!silent&&btn){btn.disabled=false;btn.innerHTML='&#8645; Sync';}
@@ -510,7 +520,7 @@ function renderView(bookings,cid,isTomorrow,isToday){
   let adminBar='';
   if(isAdmin&&isTomorrow){adminBar='<div class="admin-bar"><span>&#128274; Modo <strong>Admin</strong></span><button class="btn btn-teal" onclick="syncCalendar()" style="padding:5px 10px;font-size:0.76rem">&#8645; Sincronizar</button></div>';}
 
-  let exportBtn=(isTomorrow||isToday)?'<button class="btn btn-export btn-sm" onclick="showExport()">&#128203; Exportar</button>':'';
+  let exportBtn=isTomorrow?'<button class="btn btn-export btn-sm" onclick="showExport(\'tomorrow\')">&#128203; Exportar</button>':isToday?'<button class="btn btn-export btn-sm" onclick="showExport(\'today\')">&#128203; Exportar</button>':'';
 
   let html=filters+adminBar+progressRing;
   html+='<div class="top-bar"><div class="summary-bar">';
@@ -1070,13 +1080,22 @@ function renderPaymentCard(b){
   }else{
     html+='<div class="booking-title">'+(flag?flag+' ':'&#129489; ')+esc(clientName||'Sin nombre')+'</div>';
   }
-  html+='<div class="pay-amount-big">&#128176; <span>'+balance+'</span></div>';
+  html+='<div class="pay-amount-big">&#9973; <span>'+balance+'</span></div>';
   html+='<div class="booking-meta">';
   if(b.parsed.pax)html+='<span class="meta-chip chip-pax">&#128101; '+esc(b.parsed.pax)+' pax</span>';
   html+='<span class="meta-chip chip-boat">&#128674; '+esc(boat)+'</span>';
   html+='<span class="meta-chip chip-type">&#128081; '+esc(skipper)+'</span>';
   if(foodIcon)html+='<span class="meta-chip chip-type">'+foodIcon+'</span>';
-  html+='</div></div>';
+  html+='</div>';
+  // Phone + WA button
+  if(phone){
+    const waNum=buildWa(phone);
+    html+='<div class="pay-phone-row">';
+    html+='<span class="pay-phone-num">&#128222; '+esc(phone)+'</span>';
+    if(waNum)html+='<a class="btn-wa-review" href="https://wa.me/'+waNum+'" target="_blank" onclick="event.stopPropagation()">&#128172; WhatsApp</a>';
+    html+='</div>';
+  }
+  html+='</div>';
   // Review row
   const reviewYesActive=rating===3?'active-yes':'';
   const reviewNoActive=rating===1?'active-no':'';
@@ -1344,11 +1363,12 @@ function setStatsStart(v){statsRangeStart=v;}
 function setStatsEnd(v){statsRangeEnd=v;}
 
 // ── Export ────────────────────────────────────────────────────────────────────
-function showExport(){
-  const tom=new Date();tom.setDate(tom.getDate()+1);
-  const tStr=toDateStr(tom);
+function showExport(which){
+  const base=new Date();
+  if(which==='tomorrow')base.setDate(base.getDate()+1);
+  const tStr=toDateStr(base);
   const dayBookings=filterBookings(allBookings.filter(b=>b.date===tStr));
-  if(!dayBookings.length){alert('No hay reservas para manana.');return;}
+  if(!dayBookings.length){alert('No hay reservas para '+(which==='today'?'hoy':'manana')+'.');return;}
   const weekdays=['Domingo','Lunes','Martes','Miercoles','Jueves','Viernes','Sabado'];
   const months=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
   const d=new Date(tStr+'T12:00:00');
