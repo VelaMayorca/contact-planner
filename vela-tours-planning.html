@@ -423,7 +423,8 @@ async function loadFromSupabase(){
     const wEnd=new Date(tom);wEnd.setDate(tom.getDate()+6);
     const wStr=toDateStr(wEnd);
     const[events,notesMap]=await Promise.all([loadEventsFromSupabase(todayStr,wStr),loadAllNotes()]);
-    allNotes=notesMap;allBookings=events.filter((b,i,arr)=>arr.findIndex(x=>x.start===b.start&&x.parsed.buyer===b.parsed.buyer&&x.parsed.pax===b.parsed.pax)===i);
+    const baseId=id=>id.replace(/_\d+$/,'');
+    allNotes=notesMap;allBookings=events.filter((b,i,arr)=>arr.findIndex(x=>baseId(x.id)===baseId(b.id)&&x.parsed.buyer===b.parsed.buyer)===i);
 
     renderToday();
     renderTomorrow();
