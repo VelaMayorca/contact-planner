@@ -1687,8 +1687,8 @@ async function syncCalendarMonth(){
   await renderCalendarView();
 }
 
-function calPrevMonth(){calViewMonth--;if(calViewMonth<0){calViewMonth=11;calViewYear--;}calViewSelectedDate=null;renderCalendarView();}
-function calNextMonth(){calViewMonth++;if(calViewMonth>11){calViewMonth=0;calViewYear++;}calViewSelectedDate=null;renderCalendarView();}
+function calPrevMonth(){calViewMonth--;if(calViewMonth<0){calViewMonth=11;calViewYear--;}calViewSelectedDate=null;if(isAdmin&&accessToken)syncCalendarMonth();else renderCalendarView();}
+function calNextMonth(){calViewMonth++;if(calViewMonth>11){calViewMonth=0;calViewYear++;}calViewSelectedDate=null;if(isAdmin&&accessToken)syncCalendarMonth();else renderCalendarView();}
 function calSelectDay(ds){calViewSelectedDate=calViewSelectedDate===ds?null:ds;renderCalendarView();}
 
 function switchTab(tab){
@@ -1696,7 +1696,7 @@ function switchTab(tab){
   document.getElementById('tab-'+tab).classList.add('active');
   ['today','tomorrow','week','calendar','history','payments','stats','arreglos','compras'].forEach(v=>{document.getElementById('view-'+v).style.display=v===tab?'block':'none';});
   if(tab==='history')renderHistory();
-  if(tab==='calendar')renderCalendarView();
+  if(tab==='calendar'){if(isAdmin&&accessToken)syncCalendarMonth();else renderCalendarView();}
   if(tab==='payments'){
     const realToday=new Date();
     // If the calendar day has rolled over since the page was loaded, and the date shown
