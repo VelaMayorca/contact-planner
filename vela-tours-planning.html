@@ -1613,6 +1613,10 @@ async function renderCalendarView(){
     const ns=id=>{const n=nm[id]||{};return(n.skipper?2:0)+(n.boat?2:0)+(n.phone?1:0)+(n.balance?1:0);};
     const deduped=evs.sort((a,b)=>ns(b.id)-ns(a.id)).filter((b,i,arr)=>arr.findIndex(x=>x.start===b.start&&x.parsed.buyer===b.parsed.buyer)===i);
     for(const b of deduped){if(!byDate[b.date])byDate[b.date]=[];byDate[b.date].push(b);}
+    // Merge into global state so card interactions (toggleNotes, saveNotes, etc.) work
+    Object.assign(allNotes,nm);
+    const existingIds=new Set(allBookings.map(b=>b.id));
+    for(const b of deduped){if(!existingIds.has(b.id))allBookings.push(b);}
   }catch(e){el.innerHTML='<div class="state-screen"><div class="icon">&#9888;</div><h2>Error</h2><p>'+esc(e.message)+'</p></div>';return;}
 
   const MONTHS=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
@@ -1649,10 +1653,7 @@ async function renderCalendarView(){
     h+='<div class="cal-day-detail">';
     h+='<div class="cal-detail-header">'+label.charAt(0).toUpperCase()+label.slice(1)+'</div>';
     if(bks.length){
-      // Temporarily swap allNotes for renderCard
-      const savedNotes=allNotes;allNotes=calNotes;
       h+=bks.map(b=>renderCard(b)).join('');
-      allNotes=savedNotes;
     }else{
       h+='<div class="cal-no-tours">Sin tours este día</div>';
     }
