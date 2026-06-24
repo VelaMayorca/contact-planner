@@ -423,8 +423,9 @@ async function syncCalendar(silent){
     await saveEventsToSupabase(bookings);
     // Delete Supabase rows in this date range that no longer exist in the calendar
     if(bookings.length>0){
-      const validIds=bookings.map(b=>b.id);
-      const idList='('+validIds.map(id=>'"'+id+'"').join(',')+')';
+      const validIdSet=new Set(bookings.map(b=>b.id));
+      bookings.forEach(b=>validIdSet.add(b.id.replace(/_\d+$/,'')));// protect base IDs too
+      const idList='('+[...validIdSet].map(id=>'"'+id+'"').join(',')+')';
       await sb.from('eventos').delete().gte('date',todayStr).lte('date',wEndStr).not('id','in',idList);
     }
     await loadFromSupabase();
@@ -451,11 +452,15 @@ async function loadFromSupabase(){
     const wStr=toDateStr(wEnd);
     const[events,notesMap]=await Promise.all([loadEventsFromSupabase(todayStr,wStr),loadAllNotes()]);
     allNotes=notesMap;
-    // Dedup by start+buyer: when duplicates exist, keep the row with most notes data filled
+    // Dedup by baseId+buyer: abc_0 and abc are duplicates; different events are never merged
     const noteScore=id=>{const n=notesMap[id]||{};return(n.skipper?2:0)+(n.boat?2:0)+(n.phone?1:0)+(n.balance?1:0);};
-    allBookings=events
-      .sort((a,b)=>noteScore(b.id)-noteScore(a.id))
-      .filter((b,i,arr)=>arr.findIndex(x=>x.start===b.start&&x.parsed.buyer===b.parsed.buyer)===i);
+    const baseId=id=>id.replace(/_\d+$/,'');
+    const seenKeys=new Map();
+    for(const b of events.sort((a,bk)=>noteScore(bk.id)-noteScore(a.id))){
+      const k=baseId(b.id)+'|'+b.parsed.buyer;
+      if(!seenKeys.has(k))seenKeys.set(k,b);
+    }
+    allBookings=[...seenKeys.values()];
 
     renderToday();
     renderTomorrow();
@@ -839,7 +844,7 @@ function renderCard(b){
 
 // ── Interactions ──────────────────────────────────────────────────────────────
 function setSearch(q){searchQuery=q;renderTomorrow();renderWeek();}
-function toggleCompact(){isCompact=!isCompact;renderTomorrow();renderWeek();}
+function toggleCompact(){isCompact=!isCompact;renderToday();renderTomorrow();renderWeek();}
 
 function openWaTemplate(eventId,ev){
   ev.stopPropagation();
@@ -1026,8 +1031,14 @@ async function renderPayments(){
   try{
     const[events,notesMap]=await Promise.all([loadEventsFromSupabase(dStr,dStr),loadAllNotes()]);
     allNotes={...allNotes,...notesMap};
+    // Dedup same logic as allBookings: keep best-scored version per baseId+buyer
+    const _ns=id=>{const n=notesMap[id]||{};return(n.skipper?2:0)+(n.boat?2:0)+(n.phone?1:0)+(n.balance?1:0);};
+    const _bId=id=>id.replace(/_\d+$/,'');
+    const _seen=new Map();
+    for(const b of events.sort((a,bk)=>_ns(bk.id)-_ns(a.id))){const k=_bId(b.id)+'|'+b.parsed.buyer;if(!_seen.has(k))_seen.set(k,b);}
+    const dedupedEvents=[..._seen.values()];
     let html=buildPaymentsDateNav(dStr)+buildPaymentsFilterBar();
-    const filteredEvents=filterPaymentsBookings(events);
+    const filteredEvents=filterPaymentsBookings(dedupedEvents);
     if(!filteredEvents.length){
       html+='<div class="state-screen"><div class="icon">&#127754;</div><h2>Sin charters</h2><p>'+(events.length?'No hay charters con estos filtros.':'No hubo tours este dia.')+'</p></div>';
       el.innerHTML=html;
@@ -1597,30 +1608,15 @@ async function renderCompras(){
 let calViewYear=new Date().getFullYear();
 let calViewMonth=new Date().getMonth();
 let calViewSelectedDate=null;
+let calByDate={};  // cache: dateStr → [bookings]
 
-async function renderCalendarView(){
+function renderCalendarGrid(){
   const el=document.getElementById('view-calendar');
-  if(!el||el.style.display==='none')return;
-  el.innerHTML='<div class="cal-loading">&#8635; Cargando...</div>';
-  const firstDay=new Date(calViewYear,calViewMonth,1);
-  const lastDay=new Date(calViewYear,calViewMonth+1,0);
-  const fromStr=toDateStr(firstDay);
-  const toStr=toDateStr(lastDay);
-  let byDate={},calNotes={};
-  try{
-    const[evs,nm]=await Promise.all([loadEventsFromSupabase(fromStr,toStr),loadAllNotes()]);
-    calNotes=nm;
-    const ns=id=>{const n=nm[id]||{};return(n.skipper?2:0)+(n.boat?2:0)+(n.phone?1:0)+(n.balance?1:0);};
-    const deduped=evs.sort((a,b)=>ns(b.id)-ns(a.id)).filter((b,i,arr)=>arr.findIndex(x=>x.start===b.start&&x.parsed.buyer===b.parsed.buyer)===i);
-    for(const b of deduped){if(!byDate[b.date])byDate[b.date]=[];byDate[b.date].push(b);}
-    // Merge into global state so card interactions (toggleNotes, saveNotes, etc.) work
-    Object.assign(allNotes,nm);
-    const existingIds=new Set(allBookings.map(b=>b.id));
-    for(const b of deduped){if(!existingIds.has(b.id))allBookings.push(b);}
-  }catch(e){el.innerHTML='<div class="state-screen"><div class="icon">&#9888;</div><h2>Error</h2><p>'+esc(e.message)+'</p></div>';return;}
-
+  if(!el)return;
   const MONTHS=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
   const DAYS=['Lu','Ma','Mi','Ju','Vi','Sá','Do'];
+  const firstDay=new Date(calViewYear,calViewMonth,1);
+  const lastDay=new Date(calViewYear,calViewMonth+1,0);
   let startDow=firstDay.getDay()-1;if(startDow<0)startDow=6;
   const totalDays=lastDay.getDate();
   const todayStr=toDateStr(new Date());
@@ -1637,7 +1633,7 @@ async function renderCalendarView(){
   for(let i=0;i<startDow;i++)h+='<div class="cal-day empty"></div>';
   for(let d=1;d<=totalDays;d++){
     const ds=calViewYear+'-'+String(calViewMonth+1).padStart(2,'0')+'-'+String(d).padStart(2,'0');
-    const bks=byDate[ds]||[];
+    const bks=calByDate[ds]||[];
     let cls='cal-day'+(ds===todayStr?' cal-today':'')+(ds===calViewSelectedDate?' cal-selected':'')+(bks.length?' cal-has-tours':'');
     h+='<div class="'+cls+'" onclick="calSelectDay(\''+ds+'\')">';
     h+='<span class="cal-day-num">'+d+'</span>';
@@ -1645,27 +1641,62 @@ async function renderCalendarView(){
     h+='</div>';
   }
   h+='</div>';
-
-  if(calViewSelectedDate){
-    const bks=byDate[calViewSelectedDate]||[];
-    const dto=new Date(calViewSelectedDate+'T12:00:00');
-    const label=dto.toLocaleDateString('es-ES',{weekday:'long',day:'numeric',month:'long'});
-    h+='<div class="cal-day-detail">';
-    h+='<div class="cal-detail-header">'+label.charAt(0).toUpperCase()+label.slice(1)+'</div>';
-    if(bks.length){
-      h+=bks.map(b=>renderCard(b)).join('');
-    }else{
-      h+='<div class="cal-no-tours">Sin tours este día</div>';
-    }
-    h+='</div>';
-  }
   h+='</div>';
   el.innerHTML=h;
+
+  // Render selected day cards separately so they're not wiped by calSelectDay
+  if(calViewSelectedDate){
+    const bks=calByDate[calViewSelectedDate]||[];
+    const dto=new Date(calViewSelectedDate+'T12:00:00');
+    const label=dto.toLocaleDateString('es-ES',{weekday:'long',day:'numeric',month:'long'});
+    const detail=document.createElement('div');
+    detail.className='cal-day-detail';
+    detail.id='cal-day-detail';
+    detail.innerHTML='<div class="cal-detail-header">'+label.charAt(0).toUpperCase()+label.slice(1)+'</div>'
+      +(bks.length?bks.map(b=>renderCard(b)).join(''):'<div class="cal-no-tours">Sin tours este día</div>');
+    el.querySelector('.cal-container').appendChild(detail);
+  }
+}
+
+async function loadCalendarMonth(){
+  const el=document.getElementById('view-calendar');
+  const firstDay=new Date(calViewYear,calViewMonth,1);
+  const lastDay=new Date(calViewYear,calViewMonth+1,0);
+  const fromStr=toDateStr(firstDay);
+  const toStr=toDateStr(lastDay);
+  try{
+    const[evs,nm]=await Promise.all([loadEventsFromSupabase(fromStr,toStr),loadAllNotes()]);
+    const ns=id=>{const n=nm[id]||{};return(n.skipper?2:0)+(n.boat?2:0)+(n.phone?1:0)+(n.balance?1:0);};
+    const bId=id=>id.replace(/_\d+$/,'');
+    const seen2=new Map();
+    for(const b of evs.sort((a,bk)=>ns(bk.id)-ns(a.id))){const k=bId(b.id)+'|'+b.parsed.buyer;if(!seen2.has(k))seen2.set(k,b);}
+    const deduped=[...seen2.values()];
+    calByDate={};
+    for(const b of deduped){if(!calByDate[b.date])calByDate[b.date]=[];calByDate[b.date].push(b);}
+    // Merge into global state so card interactions work
+    Object.assign(allNotes,nm);
+    const existingIds=new Set(allBookings.map(b=>b.id));
+    for(const b of deduped){if(!existingIds.has(b.id))allBookings.push(b);}
+  }catch(e){
+    if(el)el.innerHTML='<div class="state-screen"><div class="icon">&#9888;</div><h2>Error</h2><p>'+esc(e.message)+'</p></div>';
+    return false;
+  }
+  return true;
+}
+
+async function renderCalendarView(){
+  const el=document.getElementById('view-calendar');
+  if(!el||el.style.display==='none')return;
+  el.innerHTML='<div class="cal-loading">&#8635; Cargando...</div>';
+  const ok=await loadCalendarMonth();
+  if(ok)renderCalendarGrid();
 }
 
 async function syncCalendarMonth(){
   const btn=document.getElementById('btnCalSync');
   if(btn){btn.disabled=true;btn.textContent='Sincronizando...';}
+  const el=document.getElementById('view-calendar');
+  if(el)el.innerHTML='<div class="cal-loading">&#8645; Sincronizando con Google Calendar...</div>';
   try{
     const calIds=await getCalendarIds();
     const firstDay=new Date(calViewYear,calViewMonth,1);firstDay.setHours(0,0,0,0);
@@ -1677,19 +1708,26 @@ async function syncCalendarMonth(){
     const bookings=rawEvents.flatMap(parseEvents);
     await saveEventsToSupabase(bookings);
     if(bookings.length>0){
-      const validIds=bookings.map(b=>b.id);
-      const idList='('+validIds.map(id=>'"'+id+'"').join(',')+')';
+      const validIdSet2=new Set(bookings.map(b=>b.id));
+      bookings.forEach(b=>validIdSet2.add(b.id.replace(/_\d+$/,'')));// protect base IDs too
+      const idList='('+[...validIdSet2].map(id=>'"'+id+'"').join(',')+')';
       await sb.from('eventos').delete().gte('date',fromStr).lte('date',toStr).not('id','in',idList);
     }else{
       await sb.from('eventos').delete().gte('date',fromStr).lte('date',toStr);
     }
   }catch(e){alert('Error sync: '+e.message);}
-  await renderCalendarView();
+  const ok=await loadCalendarMonth();
+  if(ok)renderCalendarGrid();
 }
 
 function calPrevMonth(){calViewMonth--;if(calViewMonth<0){calViewMonth=11;calViewYear--;}calViewSelectedDate=null;if(isAdmin&&accessToken)syncCalendarMonth();else renderCalendarView();}
 function calNextMonth(){calViewMonth++;if(calViewMonth>11){calViewMonth=0;calViewYear++;}calViewSelectedDate=null;if(isAdmin&&accessToken)syncCalendarMonth();else renderCalendarView();}
-function calSelectDay(ds){calViewSelectedDate=calViewSelectedDate===ds?null:ds;renderCalendarView();}
+function calSelectDay(ds){
+  calViewSelectedDate=calViewSelectedDate===ds?null:ds;
+  // Only re-render the grid (highlights the selected day) + swap the detail section
+  // Do NOT reload from Supabase — data is already cached in calByDate
+  renderCalendarGrid();
+}
 
 function switchTab(tab){
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
