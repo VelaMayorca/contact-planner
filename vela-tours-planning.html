@@ -20,6 +20,17 @@
   .btn{border:none;border-radius:8px;padding:7px 14px;font-family:'Inter',sans-serif;font-size:0.8rem;font-weight:600;cursor:pointer;transition:opacity 0.2s;display:inline-flex;align-items:center;gap:5px;}
   .btn:hover{opacity:0.85;}.btn:disabled{opacity:0.5;pointer-events:none;}
   .btn-blue{background:var(--blue);color:#fff;}.btn-deep{background:var(--deep);color:#fff;}.btn-danger{background:var(--danger);color:#fff;}.btn-teal{background:var(--teal);color:#fff;}
+  /* Debug log modal */
+  #debugModal{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:9999;align-items:center;justify-content:center;}
+  #debugModal.open{display:flex;}
+  .debug-box{background:#0d1117;border-radius:12px;width:min(92vw,820px);max-height:80vh;display:flex;flex-direction:column;box-shadow:0 8px 40px rgba(0,0,0,0.5);}
+  .debug-header{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid #30363d;}
+  .debug-title{font-family:'Inter',monospace;font-size:0.85rem;font-weight:700;color:#58a6ff;}
+  .debug-actions{display:flex;gap:8px;}
+  .debug-btn{background:#21262d;border:1px solid #30363d;color:#c9d1d9;border-radius:6px;padding:4px 10px;font-size:0.75rem;cursor:pointer;}
+  .debug-btn:hover{background:#30363d;}
+  .debug-log{flex:1;overflow-y:auto;padding:12px 16px;font-family:'Courier New',monospace;font-size:0.72rem;line-height:1.6;color:#c9d1d9;white-space:pre-wrap;word-break:break-all;}
+  .log-info{color:#79c0ff;}.log-ok{color:#3fb950;}.log-warn{color:#d29922;}.log-err{color:#f85149;}.log-dim{color:#6e7681;}
   /* Tabs */
   .tabs{background:var(--white);border-bottom:2px solid var(--border);display:flex;padding:0 18px;overflow-x:auto;}
   .tab{padding:12px 16px;font-size:0.82rem;font-weight:600;color:var(--muted);cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-2px;transition:color 0.15s,border-color 0.15s;white-space:nowrap;}
@@ -264,6 +275,7 @@
     <button class="btn btn-blue" id="btnRefresh" onclick="loadFromSupabase()" style="display:none">&#8635;</button>
     <button class="btn" id="btnEmployeeView" onclick="window.open(location.pathname+'?view=pagos','_blank')" style="display:none;background:#f1f5f9;color:var(--text)">&#128065; Empleado</button>
     <button class="btn btn-danger" id="btnLogout" onclick="logout()" style="display:none">Salir</button>
+    <button class="btn" id="btnDebug" onclick="openDebugLog()" style="display:none;background:#21262d;color:#79c0ff;font-family:monospace;font-size:0.75rem;padding:5px 10px">&#128269; Log</button>
   </div>
 </header>
 <div class="tabs" id="tabBar" style="display:none">
@@ -278,6 +290,21 @@
   <div class="tab" onclick="switchTab('compras')" id="tab-compras">&#128722; Compras</div>
 </div>
 <main>
+  <!-- Debug log modal -->
+  <div id="debugModal">
+    <div class="debug-box">
+      <div class="debug-header">
+        <span class="debug-title">&#128269; Vela Mayorca — Debug Log</span>
+        <div class="debug-actions">
+          <button class="debug-btn" onclick="copyDebugLog()">&#128203; Copiar todo</button>
+          <button class="debug-btn" onclick="clearDebugLog()">&#128465; Limpiar</button>
+          <button class="debug-btn" onclick="closeDebugLog()">&#10005; Cerrar</button>
+        </div>
+      </div>
+      <div class="debug-log" id="debugLogContent">Sin entradas aún.</div>
+    </div>
+  </div>
+
   <div id="loginScreen" style="display:none">
     <div class="login-icon">&#128198;</div>
     <div class="login-title">Vela Mayorca &middot; Admin</div>
@@ -346,6 +373,29 @@ const isPaymentsOnly=urlParams.get('view')==='pagos';
 
 const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 
+// ── Debug log ─────────────────────────────────────────────────────────────────
+const _logEntries=[];
+function dbg(msg,level='info'){
+  const ts=new Date().toTimeString().slice(0,8);
+  const entry={ts,msg,level};
+  _logEntries.push(entry);
+  if(_logEntries.length>500)_logEntries.shift();
+  const cls=level==='ok'?'log-ok':level==='warn'?'log-warn':level==='err'?'log-err':level==='dim'?'log-dim':'log-info';
+  const el=document.getElementById('debugLogContent');
+  if(el){
+    if(el.textContent==='Sin entradas aún.')el.textContent='';
+    el.innerHTML+=`<span class="${cls}">[${ts}] ${esc(msg)}</span>\n`;
+    el.scrollTop=el.scrollHeight;
+  }
+  console[level==='err'?'error':level==='warn'?'warn':'log'](`[${ts}] ${msg}`);
+}
+function openDebugLog(){document.getElementById('debugModal').classList.add('open');}
+function closeDebugLog(){document.getElementById('debugModal').classList.remove('open');}
+function clearDebugLog(){_logEntries.length=0;const el=document.getElementById('debugLogContent');if(el)el.textContent='Sin entradas aún.';}
+function copyDebugLog(){const text=_logEntries.map(e=>`[${e.ts}] ${e.msg}`).join('\n');navigator.clipboard.writeText(text).then(()=>alert('Log copiado al portapapeles'));}
+// Show debug button for admin
+function showDebugBtn(){const b=document.getElementById('btnDebug');if(b)b.style.display='inline-flex';}
+
 // ── Supabase ──────────────────────────────────────────────────────────────────
 async function loadAllNotes(){const{data,error}=await sb.from('notas').select('*');if(error){console.error(error);return{};}const map={};for(const r of(data||[]))map[r.event_id]=r;return map;}
 async function upsertNote(eventId,fields){const{error}=await sb.from('notas').upsert({event_id:eventId,...fields,updated_at:new Date().toISOString()},{onConflict:'event_id'});if(error)throw error;}
@@ -403,14 +453,17 @@ async function getCalendarIds(){
   return cals.length?cals.map(c=>c.id):['primary'];
 }
 async function fetchGoogleEvents(calId,tMin,tMax){
-  let items=[],pageToken=null;
+  let items=[],pageToken=null,page=0;
   do{
+    page++;
     const params={timeMin:tMin.toISOString(),timeMax:tMax.toISOString(),singleEvents:'true',orderBy:'startTime',maxResults:'2500'};
     if(pageToken)params.pageToken=pageToken;
     const r=await fetch('https://www.googleapis.com/calendar/v3/calendars/'+encodeURIComponent(calId)+'/events?'+new URLSearchParams(params),{headers:{Authorization:'Bearer '+accessToken}});
     const d=await r.json();if(d.error)throw new Error(d.error.message);
-    items=items.concat(d.items||[]);
+    const batch=d.items||[];
+    items=items.concat(batch);
     pageToken=d.nextPageToken||null;
+    if(page>1||pageToken)dbg(`fetchGoogleEvents p${page}: +${batch.length} eventos (total ${items.length})${pageToken?' → siguiente página':''}`,pageToken?'warn':'dim');
   }while(pageToken);
   return items;
 }
@@ -421,22 +474,25 @@ async function syncCalendar(silent){
   try{
     const calIds=await getCalendarIds();
     const today=new Date();today.setHours(0,0,0,0);
-    const wEnd=new Date(today);wEnd.setDate(today.getDate()+14);wEnd.setHours(23,59,59,999); // 2 weeks from today
+    const wEnd=new Date(today);wEnd.setDate(today.getDate()+14);wEnd.setHours(23,59,59,999);
     const todayStr=toDateStr(today);
     const wEndStr=toDateStr(wEnd);
+    dbg(`syncCalendar: rango ${todayStr} → ${wEndStr}, calendarios: ${calIds.length}`);
     const allEventsArr=await Promise.all(calIds.map(id=>fetchGoogleEvents(id,today,wEnd)));
     const events=allEventsArr.flat();
+    dbg(`syncCalendar: ${events.length} eventos de GCal`);
     const bookings=events.flatMap(parseEvents);
+    dbg(`syncCalendar: ${bookings.length} bookings tras parseEvents`,'ok');
     await saveEventsToSupabase(bookings);
-    // Delete Supabase rows in this date range that no longer exist in the calendar
     if(bookings.length>0){
       const validIdSet=new Set(bookings.map(b=>b.id));
-      bookings.forEach(b=>validIdSet.add(b.id.replace(/_\d+$/,'')));// protect base IDs too
+      bookings.forEach(b=>validIdSet.add(b.id.replace(/_\d+$/,'')));
       const idList='('+[...validIdSet].map(id=>'"'+id+'"').join(',')+')';
+      dbg(`syncCalendar: protegiendo ${validIdSet.size} IDs, borrando stale en ${todayStr}→${wEndStr}`,'dim');
       await sb.from('eventos').delete().gte('date',todayStr).lte('date',wEndStr).not('id','in',idList);
     }
     await loadFromSupabase();
-  }catch(err){if(!silent)showError('Error sync: '+err.message);}
+  }catch(err){dbg('syncCalendar ERROR: '+err.message,'err');if(!silent)showError('Error sync: '+err.message);}
   if(!silent&&btn){btn.disabled=false;btn.innerHTML='&#8645; Sync';}
 }
 
@@ -818,7 +874,8 @@ function renderCard(b){
 
   // Notes panel
   const boatOpts=BOATS.map(bt=>'<option value="'+bt+'" '+(n.boat===bt?'selected':'')+'>'+bt+'</option>').join('');
-  const skipOpts=SKIPPERS.map(sk=>'<option value="'+sk+'" '+(n.skipper===sk?'selected':'')+'>'+sk+'</option>').join('');
+  const skipperInList=SKIPPERS.includes(n.skipper)||!n.skipper;
+  const skipOpts=SKIPPERS.map(sk=>'<option value="'+sk+'" '+((skipperInList?n.skipper===sk:sk==='Otro...')?'selected':'')+'>'+sk+'</option>').join('');
   html+='<div class="notes-panel" id="notes-'+sid+'">';
   html+='<div class="notes-grid">';
   html+='<div class="note-field"><label>Personas confirmadas</label><input type="number" min="1" max="50" placeholder="'+esc(p.pax||'')+'" value="'+esc(n.pax||'')+'" id="n-pax-'+sid+'"/></div>';
@@ -838,7 +895,8 @@ function renderCard(b){
   +'<div style="flex:1;min-width:100px"><div style="font-size:0.75rem;color:var(--muted);margin-bottom:4px">&#129382; Veggie Paella</div><input type="number" min="0" max="50" placeholder="0" value="'+(n.food_veggie||'')+'" id="n-veggie-'+sid+'"/></div>'
   +'</div></div>';
   html+='<div class="note-field"><label>Barco</label><select id="n-boat-'+sid+'"><option value="">-- Seleccionar --</option>'+boatOpts+'</select></div>';
-  html+='<div class="note-field"><label>Patron</label><select id="n-skipper-'+sid+'"><option value="">-- Seleccionar --</option>'+skipOpts+'</select></div>';
+  html+='<div class="note-field"><label>Patron</label><select id="n-skipper-'+sid+'" onchange="toggleSkipperOtro(\''+sid+'\')"><option value="">-- Seleccionar --</option>'+skipOpts+'</select>'
+  +'<input type="text" id="n-skipper-otro-'+sid+'" placeholder="Nombre del patrón..." style="margin-top:6px;display:'+(skipperInList?'none':'block')+'" value="'+(skipperInList?'':esc(n.skipper||''))+'"/></div>';
   html+='<div class="note-field"><label>Balance (EUR)</label><input type="number" min="0" step="0.01" placeholder="0.00" value="'+esc(n.balance||'')+'" id="n-balance-'+sid+'"/></div>';
   html+='<div class="note-field"><label>Extras</label><input type="text" placeholder="Snorkel, kayak..." value="'+esc(n.extras||'')+'" id="n-extras-'+sid+'"/></div>';
   html+='<div class="note-field"><label>Contactado</label><select id="n-contacted-'+sid+'"><option value="" '+((!n.contacted)?'selected':'')+'>-- Pendiente --</option><option value="si" '+((n.contacted==='si')?'selected':'')+'>Si, contactado</option><option value="reminder" '+((n.contacted==='reminder')?'selected':'')+'>Reminder enviado</option><option value="no_responde" '+((n.contacted==='no_responde')?'selected':'')+'>No responde</option></select></div>';
@@ -878,6 +936,13 @@ function saveWaTemplate(){
   closeWaTemplate();
 }
 
+function toggleSkipperOtro(sid){
+  const sel=document.getElementById('n-skipper-'+sid);
+  const inp=document.getElementById('n-skipper-otro-'+sid);
+  if(!sel||!inp)return;
+  inp.style.display=sel.value==='Otro...'?'block':'none';
+  if(sel.value==='Otro...')inp.focus();
+}
 function toggleFoodFields(el){
   const card=el.closest('.booking-card');
   if(!card)return;
@@ -919,7 +984,7 @@ async function saveNotes(sid,eventId){
     food_meat:parseInt(document.getElementById('n-meat-'+sid)?.value)||0,
     food_veggie:parseInt(document.getElementById('n-veggie-'+sid)?.value)||0,
     boat:document.getElementById('n-boat-'+sid)?.value||'',
-    skipper:document.getElementById('n-skipper-'+sid)?.value||'',
+    skipper:(()=>{const sv=document.getElementById('n-skipper-'+sid)?.value||'';return sv==='Otro...'?(document.getElementById('n-skipper-otro-'+sid)?.value||''):sv;})(),
     balance:parseFloat(document.getElementById('n-balance-'+sid)?.value)||null,
     extras:document.getElementById('n-extras-'+sid)?.value||'',
     contacted:document.getElementById('n-contacted-'+sid)?.value||'',
@@ -1673,11 +1738,13 @@ async function loadCalendarMonth(){
   const toStr=toDateStr(lastDay);
   try{
     const[evs,nm]=await Promise.all([loadEventsFromSupabase(fromStr,toStr),loadAllNotes()]);
+    dbg(`loadCalendarMonth(${fromStr}→${toStr}): ${evs.length} rows de Supabase`);
     const ns=id=>{const n=nm[id]||{};return(n.skipper?2:0)+(n.boat?2:0)+(n.phone?1:0)+(n.balance?1:0);};
     const bId=id=>id.replace(/_\d+$/,'');
     const seen2=new Map();
     for(const b of evs.sort((a,bk)=>ns(bk.id)-ns(a.id))){const k=bId(b.id)+'|'+b.parsed.buyer;if(!seen2.has(k))seen2.set(k,b);}
     const deduped=[...seen2.values()];
+    dbg(`loadCalendarMonth: ${deduped.length} tras dedup (${evs.length-deduped.length} eliminados)`,'ok');
     calByDate={};
     for(const b of deduped){if(!calByDate[b.date])calByDate[b.date]=[];calByDate[b.date].push(b);}
     // Merge into global state so card interactions work
@@ -1685,6 +1752,7 @@ async function loadCalendarMonth(){
     const existingIds=new Set(allBookings.map(b=>b.id));
     for(const b of deduped){if(!existingIds.has(b.id))allBookings.push(b);}
   }catch(e){
+    dbg('loadCalendarMonth ERROR: '+e.message,'err');
     if(el)el.innerHTML='<div class="state-screen"><div class="icon">&#9888;</div><h2>Error</h2><p>'+esc(e.message)+'</p></div>';
     return false;
   }
@@ -1714,15 +1782,18 @@ async function syncCalendarMonth(){
     const rawEvents=allEventsArr.flat();
     const bookings=rawEvents.flatMap(parseEvents);
     await saveEventsToSupabase(bookings);
+    dbg(`syncCalendarMonth: ${bookings.length} bookings de GCal para ${fromStr}→${toStr}`,'ok');
     if(bookings.length>0){
       const validIdSet2=new Set(bookings.map(b=>b.id));
-      bookings.forEach(b=>validIdSet2.add(b.id.replace(/_\d+$/,'')));// protect base IDs too
+      bookings.forEach(b=>validIdSet2.add(b.id.replace(/_\d+$/,'')));
       const idList='('+[...validIdSet2].map(id=>'"'+id+'"').join(',')+')';
+      dbg(`syncCalendarMonth: protegiendo ${validIdSet2.size} IDs, borrando stale`,'dim');
       await sb.from('eventos').delete().gte('date',fromStr).lte('date',toStr).not('id','in',idList);
     }else{
+      dbg('syncCalendarMonth: 0 bookings → borrando todo el mes','warn');
       await sb.from('eventos').delete().gte('date',fromStr).lte('date',toStr);
     }
-  }catch(e){alert('Error sync: '+e.message);}
+  }catch(e){dbg('syncCalendarMonth ERROR: '+e.message,'err');alert('Error sync: '+e.message);}
   const ok=await loadCalendarMonth();
   if(ok)renderCalendarGrid();
 }
@@ -1767,7 +1838,7 @@ function showApp(admin){
   }else{
     document.getElementById('tabBar').style.display='flex';
     document.getElementById('btnRefresh').style.display='inline-flex';
-    if(admin||isAdmin){document.getElementById('btnSync').style.display='inline-flex';document.getElementById('btnEmployeeView').style.display='inline-flex';document.getElementById('btnLogout').style.display='inline-flex';}
+    if(admin||isAdmin){document.getElementById('btnSync').style.display='inline-flex';document.getElementById('btnEmployeeView').style.display='inline-flex';document.getElementById('btnLogout').style.display='inline-flex';showDebugBtn();}
   }
 }
 function showLoading(msg){['tomorrow','week'].forEach(v=>{document.getElementById('view-'+v).innerHTML='<div class="state-screen"><div class="icon spinning">&#8635;</div><h2>'+(msg||'Cargando...')+'</h2></div>';});}
