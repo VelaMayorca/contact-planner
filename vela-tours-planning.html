@@ -403,9 +403,16 @@ async function getCalendarIds(){
   return cals.length?cals.map(c=>c.id):['primary'];
 }
 async function fetchGoogleEvents(calId,tMin,tMax){
-  const p=new URLSearchParams({timeMin:tMin.toISOString(),timeMax:tMax.toISOString(),singleEvents:'true',orderBy:'startTime',maxResults:'100'});
-  const r=await fetch('https://www.googleapis.com/calendar/v3/calendars/'+encodeURIComponent(calId)+'/events?'+p,{headers:{Authorization:'Bearer '+accessToken}});
-  const d=await r.json();if(d.error)throw new Error(d.error.message);return d.items||[];
+  let items=[],pageToken=null;
+  do{
+    const params={timeMin:tMin.toISOString(),timeMax:tMax.toISOString(),singleEvents:'true',orderBy:'startTime',maxResults:'2500'};
+    if(pageToken)params.pageToken=pageToken;
+    const r=await fetch('https://www.googleapis.com/calendar/v3/calendars/'+encodeURIComponent(calId)+'/events?'+new URLSearchParams(params),{headers:{Authorization:'Bearer '+accessToken}});
+    const d=await r.json();if(d.error)throw new Error(d.error.message);
+    items=items.concat(d.items||[]);
+    pageToken=d.nextPageToken||null;
+  }while(pageToken);
+  return items;
 }
 async function syncCalendar(silent){
   const btn=document.getElementById('btnSync');
