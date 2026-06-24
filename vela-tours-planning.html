@@ -192,6 +192,31 @@
   .btn-wa-review{background:#25d366;color:#fff;border-radius:8px;padding:5px 14px;font-size:0.8rem;font-weight:700;text-decoration:none;display:inline-flex;align-items:center;gap:5px;}
   .pay-phone-row{display:flex;align-items:center;gap:10px;padding:4px 18px 6px;flex-wrap:wrap;}
   .pay-phone-num{font-size:0.82rem;color:var(--muted);}
+  /* Calendario tab */
+  .cal-container{padding:16px 16px 32px;}
+  .cal-header{display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap;}
+  .cal-month-title{font-family:'DM Serif Display',serif;font-size:1.2rem;color:var(--blue);flex:1;text-align:center;}
+  .cal-nav{background:none;border:1.5px solid var(--border);border-radius:8px;padding:5px 12px;font-size:1rem;cursor:pointer;color:var(--text);}
+  .cal-nav:hover{border-color:var(--blue);color:var(--blue);}
+  .btn-cal-sync{background:var(--blue);color:#fff;border:none;border-radius:8px;padding:7px 14px;font-size:0.82rem;font-weight:700;cursor:pointer;}
+  .btn-cal-sync:hover{opacity:0.88;}
+  .btn-cal-sync:disabled{opacity:0.5;cursor:not-allowed;}
+  .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;}
+  .cal-day-name{text-align:center;font-size:0.75rem;font-weight:700;color:var(--muted);padding:4px 0;text-transform:uppercase;}
+  .cal-day{min-height:52px;border:1.5px solid var(--border);border-radius:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;transition:all 0.15s;padding:4px 2px;background:var(--white);}
+  .cal-day:hover{border-color:var(--blue);}
+  .cal-day.empty{background:transparent;border-color:transparent;cursor:default;}
+  .cal-day.cal-today{border-color:var(--blue);background:#eff6ff;}
+  .cal-day.cal-selected{border-color:var(--blue);background:var(--blue);color:#fff;}
+  .cal-day.cal-selected .cal-day-num{color:#fff;}
+  .cal-day.cal-selected .cal-tour-count{background:rgba(255,255,255,0.3);color:#fff;}
+  .cal-day.cal-has-tours{font-weight:700;}
+  .cal-day-num{font-size:0.9rem;font-weight:600;line-height:1;}
+  .cal-tour-count{margin-top:3px;background:#dbeafe;color:var(--blue);border-radius:12px;padding:1px 7px;font-size:0.7rem;font-weight:800;}
+  .cal-day-detail{margin-top:20px;}
+  .cal-detail-header{font-family:'DM Serif Display',serif;font-size:1.1rem;color:var(--text);margin-bottom:12px;padding-bottom:8px;border-bottom:1.5px solid var(--border);text-transform:capitalize;}
+  .cal-loading{padding:60px;text-align:center;color:var(--muted);}
+  .cal-no-tours{text-align:center;padding:40px 20px;color:var(--muted);font-size:0.9rem;}
   .btn-wa-review:hover{opacity:0.88;}
   .review-pedida-check{display:flex;align-items:center;gap:6px;font-size:0.82rem;font-weight:600;color:var(--text);cursor:pointer;}
   .review-pedida-check input{width:16px;height:16px;cursor:pointer;accent-color:var(--success);}
@@ -245,6 +270,7 @@
   <div class="tab" onclick="switchTab('today')" id="tab-today">&#128198; Hoy</div>
   <div class="tab active" onclick="switchTab('tomorrow')" id="tab-tomorrow">&#128197; Manana</div>
   <div class="tab" onclick="switchTab('week')" id="tab-week">&#128197; Semana</div>
+  <div class="tab" onclick="switchTab('calendar')" id="tab-calendar">&#128467; Calendario</div>
   <div class="tab" onclick="switchTab('history')" id="tab-history">&#128337; Historico</div>
   <div class="tab" onclick="switchTab('payments')" id="tab-payments">&#9973; Tours</div>
   <div class="tab" onclick="switchTab('stats')" id="tab-stats">&#128202; Estadisticas</div>
@@ -265,6 +291,7 @@
     <div id="view-today" style="display:none"></div>
     <div id="view-tomorrow"></div>
     <div id="view-week" style="display:none"></div>
+    <div id="view-calendar" style="display:none"></div>
     <div id="view-history" style="display:none"></div>
     <div id="view-payments" style="display:none"></div>
     <div id="view-stats" style="display:none"></div>
@@ -1566,11 +1593,109 @@ async function renderCompras(){
 }
 
 // ── UI ────────────────────────────────────────────────────────────────────────
+// ── Calendario view ────────────────────────────────────────────────────────
+let calViewYear=new Date().getFullYear();
+let calViewMonth=new Date().getMonth();
+let calViewSelectedDate=null;
+
+async function renderCalendarView(){
+  const el=document.getElementById('view-calendar');
+  if(!el||el.style.display==='none')return;
+  el.innerHTML='<div class="cal-loading">&#8635; Cargando...</div>';
+  const firstDay=new Date(calViewYear,calViewMonth,1);
+  const lastDay=new Date(calViewYear,calViewMonth+1,0);
+  const fromStr=toDateStr(firstDay);
+  const toStr=toDateStr(lastDay);
+  let byDate={},calNotes={};
+  try{
+    const[evs,nm]=await Promise.all([loadEventsFromSupabase(fromStr,toStr),loadAllNotes()]);
+    calNotes=nm;
+    const ns=id=>{const n=nm[id]||{};return(n.skipper?2:0)+(n.boat?2:0)+(n.phone?1:0)+(n.balance?1:0);};
+    const deduped=evs.sort((a,b)=>ns(b.id)-ns(a.id)).filter((b,i,arr)=>arr.findIndex(x=>x.start===b.start&&x.parsed.buyer===b.parsed.buyer)===i);
+    for(const b of deduped){if(!byDate[b.date])byDate[b.date]=[];byDate[b.date].push(b);}
+  }catch(e){el.innerHTML='<div class="state-screen"><div class="icon">&#9888;</div><h2>Error</h2><p>'+esc(e.message)+'</p></div>';return;}
+
+  const MONTHS=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  const DAYS=['Lu','Ma','Mi','Ju','Vi','Sá','Do'];
+  let startDow=firstDay.getDay()-1;if(startDow<0)startDow=6;
+  const totalDays=lastDay.getDate();
+  const todayStr=toDateStr(new Date());
+
+  let h='<div class="cal-container">';
+  h+='<div class="cal-header">';
+  h+='<button class="cal-nav" onclick="calPrevMonth()">&#8592;</button>';
+  h+='<span class="cal-month-title">'+MONTHS[calViewMonth]+' '+calViewYear+'</span>';
+  h+='<button class="cal-nav" onclick="calNextMonth()">&#8594;</button>';
+  if(isAdmin)h+='<button id="btnCalSync" class="btn-cal-sync" onclick="syncCalendarMonth()">&#8645; Sync mes</button>';
+  h+='</div>';
+  h+='<div class="cal-grid">';
+  DAYS.forEach(d=>{h+='<div class="cal-day-name">'+d+'</div>';});
+  for(let i=0;i<startDow;i++)h+='<div class="cal-day empty"></div>';
+  for(let d=1;d<=totalDays;d++){
+    const ds=calViewYear+'-'+String(calViewMonth+1).padStart(2,'0')+'-'+String(d).padStart(2,'0');
+    const bks=byDate[ds]||[];
+    let cls='cal-day'+(ds===todayStr?' cal-today':'')+(ds===calViewSelectedDate?' cal-selected':'')+(bks.length?' cal-has-tours':'');
+    h+='<div class="'+cls+'" onclick="calSelectDay(\''+ds+'\')">';
+    h+='<span class="cal-day-num">'+d+'</span>';
+    if(bks.length)h+='<span class="cal-tour-count">'+bks.length+'</span>';
+    h+='</div>';
+  }
+  h+='</div>';
+
+  if(calViewSelectedDate){
+    const bks=byDate[calViewSelectedDate]||[];
+    const dto=new Date(calViewSelectedDate+'T12:00:00');
+    const label=dto.toLocaleDateString('es-ES',{weekday:'long',day:'numeric',month:'long'});
+    h+='<div class="cal-day-detail">';
+    h+='<div class="cal-detail-header">'+label.charAt(0).toUpperCase()+label.slice(1)+'</div>';
+    if(bks.length){
+      // Temporarily swap allNotes for renderCard
+      const savedNotes=allNotes;allNotes=calNotes;
+      h+=bks.map(b=>renderCard(b)).join('');
+      allNotes=savedNotes;
+    }else{
+      h+='<div class="cal-no-tours">Sin tours este día</div>';
+    }
+    h+='</div>';
+  }
+  h+='</div>';
+  el.innerHTML=h;
+}
+
+async function syncCalendarMonth(){
+  const btn=document.getElementById('btnCalSync');
+  if(btn){btn.disabled=true;btn.textContent='Sincronizando...';}
+  try{
+    const calIds=await getCalendarIds();
+    const firstDay=new Date(calViewYear,calViewMonth,1);firstDay.setHours(0,0,0,0);
+    const lastDay=new Date(calViewYear,calViewMonth+1,0);lastDay.setHours(23,59,59,999);
+    const fromStr=toDateStr(firstDay);
+    const toStr=toDateStr(lastDay);
+    const allEventsArr=await Promise.all(calIds.map(id=>fetchGoogleEvents(id,firstDay,lastDay)));
+    const rawEvents=allEventsArr.flat();
+    const bookings=rawEvents.flatMap(parseEvents);
+    await saveEventsToSupabase(bookings);
+    if(bookings.length>0){
+      const validIds=bookings.map(b=>b.id);
+      const idList='('+validIds.map(id=>'"'+id+'"').join(',')+')';
+      await sb.from('eventos').delete().gte('date',fromStr).lte('date',toStr).not('id','in',idList);
+    }else{
+      await sb.from('eventos').delete().gte('date',fromStr).lte('date',toStr);
+    }
+  }catch(e){alert('Error sync: '+e.message);}
+  await renderCalendarView();
+}
+
+function calPrevMonth(){calViewMonth--;if(calViewMonth<0){calViewMonth=11;calViewYear--;}calViewSelectedDate=null;renderCalendarView();}
+function calNextMonth(){calViewMonth++;if(calViewMonth>11){calViewMonth=0;calViewYear++;}calViewSelectedDate=null;renderCalendarView();}
+function calSelectDay(ds){calViewSelectedDate=calViewSelectedDate===ds?null:ds;renderCalendarView();}
+
 function switchTab(tab){
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
   document.getElementById('tab-'+tab).classList.add('active');
-  ['today','tomorrow','week','history','payments','stats','arreglos','compras'].forEach(v=>{document.getElementById('view-'+v).style.display=v===tab?'block':'none';});
+  ['today','tomorrow','week','calendar','history','payments','stats','arreglos','compras'].forEach(v=>{document.getElementById('view-'+v).style.display=v===tab?'block':'none';});
   if(tab==='history')renderHistory();
+  if(tab==='calendar')renderCalendarView();
   if(tab==='payments'){
     const realToday=new Date();
     // If the calendar day has rolled over since the page was loaded, and the date shown
@@ -1591,7 +1716,7 @@ function showApp(admin){
   if(isPaymentsOnly){
     // Show tabBar but only Pagos + Arreglos tabs
     document.getElementById('tabBar').style.display='flex';
-    ['today','tomorrow','week','history','stats'].forEach(t=>{document.getElementById('tab-'+t).style.display='none';});
+    ['today','tomorrow','week','calendar','history','stats'].forEach(t=>{document.getElementById('tab-'+t).style.display='none';});
     document.getElementById('btnRefresh').style.display='inline-flex';
   }else{
     document.getElementById('tabBar').style.display='flex';
