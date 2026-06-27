@@ -820,6 +820,23 @@ function renderCard(b){
   const skipper=n.skipper||'';
   const isNew=false;
 
+  // Emoji por patrón
+  const SKIPPER_ICONS={'Edu':'🔪','Alberto':'🦒','Silvio':'🏴‍☠️'};
+  const skipperIcon=SKIPPER_ICONS[skipper]||'👨🏻‍✈️';
+
+  // Comida (declarada aquí para usarla en chips y pills)
+  const tapas=parseInt(n.food_tapas)||0,fish=parseInt(n.food_fish)||0,meat=parseInt(n.food_meat)||0,veggie=parseInt(n.food_veggie)||0;
+  let foodChip='';
+  if(n.food==='no')foodChip='<span class="meta-chip chip-type">❌ Sin comida</span>';
+  else if(tapas>0||fish>0||meat>0||veggie>0){
+    const fp=[];
+    if(tapas>0)fp.push('🍤 '+tapas+' tapas');
+    if(fish>0)fp.push('🐟 '+fish+' fish');
+    if(meat>0)fp.push('🥩 '+meat+' meat');
+    if(veggie>0)fp.push('🥦 '+veggie+' veggie');
+    foodChip='<span class="meta-chip chip-type">'+fp.join(' · ')+'</span>';
+  }
+
   const isReminder=n.contacted==='reminder';
   const cardBg=isReminder?' is-ready':isContacted?' is-contacted':'';
   let html='<div class="booking-card'+cardBg+'" id="card-'+sid+'">';
@@ -834,8 +851,9 @@ function renderCard(b){
   html+='<div class="booking-meta">';
   const displayPax=n.pax||p.pax;if(displayPax)html+='<span class="meta-chip chip-pax">&#128101; '+esc(displayPax)+' pax</span>';
   if(boat)html+='<span class="meta-chip chip-boat">&#128674; '+esc(boat)+'</span>';
-  if(skipper)html+='<span class="meta-chip chip-type">&#128081; '+esc(skipper)+'</span>';
+  if(skipper)html+='<span class="meta-chip chip-type">'+skipperIcon+' '+esc(skipper)+'</span>';
   if(p.variant)html+='<span class="meta-chip chip-type">'+esc(p.variant)+'</span>';
+  if(foodChip)html+=foodChip;
   html+='</div>';
   // Notes summary pills inside info-col
   const pills=[];
@@ -843,7 +861,6 @@ function renderCard(b){
   else if(n.contacted==='reminder')pills.push('<span class="note-pill">&#128228; Reminder enviado</span>');
   else if(n.contacted==='no_responde')pills.push('<span class="note-pill">&#128244; No responde</span>');
   if(isAdmin&&n.balance)pills.push('<span class="note-pill">&#128176; <strong>'+n.balance+'&#8364;</strong></span>');
-  const tapas=parseInt(n.food_tapas)||0,fish=parseInt(n.food_fish)||0,meat=parseInt(n.food_meat)||0,veggie=parseInt(n.food_veggie)||0;
   if(tapas>0)pills.push('<span class="note-pill">&#127860; <strong>'+tapas+'</strong> tapas</span>');
   if(fish>0)pills.push('<span class="note-pill">&#128031; <strong>'+fish+'</strong> fish</span>');
   if(meat>0)pills.push('<span class="note-pill">&#129385; <strong>'+meat+'</strong> meat</span>');
