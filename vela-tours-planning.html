@@ -1186,15 +1186,18 @@ function renderPaymentCard(b){
   const rating=parseInt(n.rating)||0;
   const phone=n.phone||b.parsed.phone||'';
   const flag=getFlag(phone);
+  const SKIPPER_ICONS_P={'Edu':'🔪','Alberto':'🦒','Silvio':'🏴‍☠️'};
+  const skipperIconP=SKIPPER_ICONS_P[skipper]||'👨🏻‍✈️';
   const tapas=parseInt(n.food_tapas)||0,fish=parseInt(n.food_fish)||0,meat=parseInt(n.food_meat)||0,veggie=parseInt(n.food_veggie)||0;
   let foodIcon='';
-  if(n.food==='no')foodIcon='&#10060;';
+  if(n.food==='no')foodIcon='❌ Sin comida';
   else if(tapas>0||fish>0||meat>0||veggie>0){
-    const parts=[];
-    if(tapas>0)foodIcon+='&#127860;';
-    if(fish>0)foodIcon+='&#128031;';
-    if(meat>0)foodIcon+='&#129385;';
-    if(veggie>0)foodIcon+='&#129382;';
+    const fp=[];
+    if(tapas>0)fp.push('🍤 '+tapas+' tapas');
+    if(fish>0)fp.push('🐟 '+fish+' fish');
+    if(meat>0)fp.push('🥩 '+meat+' meat');
+    if(veggie>0)fp.push('🥦 '+veggie+' veggie');
+    foodIcon=fp.join(' · ');
   }
 
   const clientName=n.client_name||b.parsed.buyer||'';
@@ -1216,7 +1219,7 @@ function renderPaymentCard(b){
   html+='<div class="booking-meta">';
   if(b.parsed.pax)html+='<span class="meta-chip chip-pax">&#128101; '+esc(b.parsed.pax)+' pax</span>';
   html+='<span class="meta-chip chip-boat">&#128674; '+esc(boat)+'</span>';
-  html+='<span class="meta-chip chip-type">&#128081; '+esc(skipper)+'</span>';
+  html+='<span class="meta-chip chip-type">'+skipperIconP+' '+esc(skipper)+'</span>';
   if(foodIcon)html+='<span class="meta-chip chip-type">'+foodIcon+'</span>';
   html+='</div>';
   // Phone + WA button
