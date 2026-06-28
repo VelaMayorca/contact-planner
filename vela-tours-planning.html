@@ -327,25 +327,25 @@
           <button onclick="closeContract()" style="background:rgba(255,255,255,0.2);color:#fff;border:none;border-radius:8px;padding:8px 14px;cursor:pointer;font-size:1rem;">&#10005;</button>
         </div>
       </div>
-      <!-- Contract document (captured for PDF) -->
-      <div id="contractDoc" style="padding:40px 48px;font-family:'Times New Roman',serif;font-size:13px;line-height:1.6;color:#111;background:#fff;">
-        <!-- filled by openContract() -->
-      </div>
-      <!-- Signature pads (below doc, not included in PDF area) -->
-      <div style="padding:20px 24px;background:#f8fafc;border-top:1px solid var(--border);">
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+      <!-- Signature pads (top, before contract doc) -->
+      <div style="padding:16px 20px;background:#fffbeb;border-bottom:2px solid #fcd34d;">
+        <div style="font-size:0.8rem;font-weight:700;color:#92400e;margin-bottom:10px;text-align:center;">✍️ Firmar antes de generar el contrato</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
           <div>
-            <div style="font-size:0.78rem;font-weight:600;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:0.05em;">Firma del arrendatario</div>
-            <canvas id="sigClient" width="280" height="110" style="border:2px dashed var(--border);border-radius:8px;background:#fff;touch-action:none;width:100%;cursor:crosshair;"></canvas>
-            <button onclick="clearSig('sigClient')" style="margin-top:6px;background:none;border:1px solid var(--border);border-radius:6px;padding:4px 12px;font-size:0.75rem;cursor:pointer;color:var(--muted);">&#10005; Limpiar</button>
+            <div style="font-size:0.75rem;font-weight:700;color:var(--muted);margin-bottom:5px;text-transform:uppercase;letter-spacing:0.05em;">Firma del cliente</div>
+            <canvas id="sigClient" width="280" height="100" style="border:2px dashed #fcd34d;border-radius:8px;background:#fff;touch-action:none;width:100%;cursor:crosshair;"></canvas>
+            <button onclick="clearSig('sigClient')" style="margin-top:5px;background:none;border:1px solid var(--border);border-radius:6px;padding:3px 10px;font-size:0.73rem;cursor:pointer;color:var(--muted);">&#10005; Limpiar</button>
           </div>
           <div>
-            <div style="font-size:0.78rem;font-weight:600;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:0.05em;">Firma del patrón</div>
-            <canvas id="sigCaptain" width="280" height="110" style="border:2px dashed var(--border);border-radius:8px;background:#fff;touch-action:none;width:100%;cursor:crosshair;"></canvas>
-            <button onclick="clearSig('sigCaptain')" style="margin-top:6px;background:none;border:1px solid var(--border);border-radius:6px;padding:4px 12px;font-size:0.75rem;cursor:pointer;color:var(--muted);">&#10005; Limpiar</button>
+            <div style="font-size:0.75rem;font-weight:700;color:var(--muted);margin-bottom:5px;text-transform:uppercase;letter-spacing:0.05em;">Firma del patrón</div>
+            <canvas id="sigCaptain" width="280" height="100" style="border:2px dashed #fcd34d;border-radius:8px;background:#fff;touch-action:none;width:100%;cursor:crosshair;"></canvas>
+            <button onclick="clearSig('sigCaptain')" style="margin-top:5px;background:none;border:1px solid var(--border);border-radius:6px;padding:3px 10px;font-size:0.73rem;cursor:pointer;color:var(--muted);">&#10005; Limpiar</button>
           </div>
         </div>
-        <p style="font-size:0.72rem;color:var(--muted);margin-top:12px;text-align:center;">Firmar con el dedo o ratón · Al descargar el PDF las firmas quedan incluidas en el documento</p>
+      </div>
+      <!-- Contract document -->
+      <div id="contractDoc" style="padding:40px 48px;font-family:'Times New Roman',serif;font-size:13px;line-height:1.6;color:#111;background:#fff;">
+        <!-- filled by openContract() -->
       </div>
     </div>
   </div>
