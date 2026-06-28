@@ -323,7 +323,7 @@
       <div style="background:var(--blue);padding:16px 20px;display:flex;align-items:center;justify-content:space-between;gap:12px;">
         <span style="color:#fff;font-weight:700;font-size:1rem;">&#128221; Contrato de Excursión</span>
         <div style="display:flex;gap:8px;">
-          <button onclick="downloadContractPDF()" style="background:#fff;color:var(--blue);border:none;border-radius:8px;padding:8px 16px;font-weight:700;cursor:pointer;font-size:0.85rem;">&#11015; Descargar PDF</button>
+          <button onclick="downloadContractPDF()" style="background:#fff;color:var(--blue);border:none;border-radius:8px;padding:8px 16px;font-weight:700;cursor:pointer;font-size:0.85rem;">&#128438; Ver contrato</button>
           <button onclick="closeContract()" style="background:rgba(255,255,255,0.2);color:#fff;border:none;border-radius:8px;padding:8px 14px;cursor:pointer;font-size:1rem;">&#10005;</button>
         </div>
       </div>
@@ -2102,69 +2102,63 @@ function _sigIsEmpty(canvas){
   return true;
 }
 
-async function downloadContractPDF(){
-  const btn=document.querySelector('#contractModal button[onclick="downloadContractPDF()"]');
-  const orig=btn.textContent;
-  btn.textContent='Generando...';btn.disabled=true;
+function downloadContractPDF(){
+  // Open window SYNCHRONOUSLY before any async work — required for iOS Safari
+  const win=window.open('','_blank');
+  if(!win){alert('Permite ventanas emergentes para ver el contrato.');return;}
 
-  try{
-    // Embed signatures into the document before capture
-    const slotClient=document.getElementById('sigSlotClient');
-    const slotCaptain=document.getElementById('sigSlotCaptain');
-    const cvClient=document.getElementById('sigClient');
-    const cvCaptain=document.getElementById('sigCaptain');
-
-    function embedSig(slot,canvas){
-      slot.innerHTML='';
-      if(!_sigIsEmpty(canvas)){
-        const img=document.createElement('img');
-        img.src=canvas.toDataURL('image/png');
-        img.className='cdoc-sig-img';
-        slot.appendChild(img);
-      }
+  // Embed signatures into contract slots
+  function embedSig(slotId,canvasId){
+    const slot=document.getElementById(slotId);
+    const canvas=document.getElementById(canvasId);
+    if(!slot||!canvas)return;
+    slot.innerHTML='';
+    if(!_sigIsEmpty(canvas)){
+      const img=document.createElement('img');
+      img.src=canvas.toDataURL('image/png');
+      img.className='cdoc-sig-img';
+      slot.appendChild(img);
     }
-    embedSig(slotClient,cvClient);
-    embedSig(slotCaptain,cvCaptain);
-
-    const docEl=document.getElementById('contractDoc');
-    const canvas=await html2canvas(docEl,{scale:2,useCORS:true,backgroundColor:'#ffffff',logging:false});
-    const imgData=canvas.toDataURL('image/png');
-
-    const {jsPDF}=window.jspdf;
-    const pdf=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
-    const pdfW=pdf.internal.pageSize.getWidth();
-    const pdfH=pdf.internal.pageSize.getHeight();
-    const ratio=canvas.height/canvas.width;
-    const imgW=pdfW-20;
-    const imgH=imgW*ratio;
-    let y=10;
-    if(imgH<=pdfH-20){
-      pdf.addImage(imgData,'PNG',10,y,imgW,imgH);
-    } else {
-      // Multi-page if needed
-      let srcY=0;
-      const pageImgH=pdfH-20;
-      const srcPageH=Math.floor(pageImgH*canvas.width/imgW);
-      while(srcY<canvas.height){
-        const tmp=document.createElement('canvas');
-        tmp.width=canvas.width;
-        tmp.height=Math.min(srcPageH,canvas.height-srcY);
-        tmp.getContext('2d').drawImage(canvas,0,srcY,canvas.width,tmp.height,0,0,canvas.width,tmp.height);
-        pdf.addImage(tmp.toDataURL('image/png'),'PNG',10,10,imgW,tmp.height*imgW/canvas.width);
-        srcY+=srcPageH;
-        if(srcY<canvas.height)pdf.addPage();
-      }
-    }
-
-    const bookingId=document.getElementById('contractModal')._bookingId||'contrato';
-    const b=allBookings.find(x=>x.id===bookingId);
-    const fname='contrato_'+(b?b.date:'')+'_'+((allNotes[bookingId]?.boat||'barco').replace(/\s+/g,'_'))+'.pdf';
-    pdf.save(fname);
-  } catch(e){
-    alert('Error generando PDF: '+e.message);
-  } finally {
-    btn.textContent=orig;btn.disabled=false;
   }
+  embedSig('sigSlotClient','sigClient');
+  embedSig('sigSlotCaptain','sigCaptain');
+
+  // Grab contract HTML with signatures already embedded
+  const contractHTML=document.getElementById('contractDoc').innerHTML;
+
+  win.document.write(`<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Contrato Vela Mayorca</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:'Times New Roman',serif;font-size:13px;line-height:1.65;color:#111;background:#fff;padding:32px 40px;}
+  @media print{body{padding:15mm 20mm;} .no-print{display:none;}}
+  @page{size:A4;margin:15mm 20mm;}
+  .cdoc-title{text-align:center;font-size:15px;font-weight:bold;text-transform:uppercase;margin-bottom:18px;letter-spacing:.08em;}
+  .cdoc-intro{margin-bottom:12px;}
+  .cdoc-section{margin-bottom:14px;}
+  .cdoc-section-title{font-weight:bold;text-decoration:underline;margin-bottom:4px;}
+  .cdoc-field{margin-bottom:3px;}
+  .cdoc-field span{font-weight:bold;}
+  .cdoc-sig-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:24px;border-top:1px solid #ccc;padding-top:16px;}
+  .cdoc-sig-box{text-align:center;}
+  .cdoc-sig-img{height:70px;width:100%;object-fit:contain;display:block;margin-bottom:4px;}
+  .cdoc-sig-placeholder{height:70px;border-bottom:1px solid #333;margin-bottom:4px;}
+  .cdoc-sig-label{font-size:11px;font-weight:bold;}
+  .print-btn{display:block;margin:0 auto 24px;background:#1d4ed8;color:#fff;border:none;border-radius:10px;padding:12px 28px;font-size:15px;font-weight:700;cursor:pointer;font-family:sans-serif;}
+  .print-hint{text-align:center;font-family:sans-serif;font-size:12px;color:#888;margin-bottom:20px;}
+</style>
+</head>
+<body>
+<button class="print-btn no-print" onclick="window.print()">&#128438; Imprimir / Guardar PDF</button>
+<p class="print-hint no-print">En iPhone: Compartir → Imprimir → pellizcar para guardar como PDF</p>
+${contractHTML}
+</body>
+</html>`);
+  win.document.close();
 }
 
 function switchTab(tab){
