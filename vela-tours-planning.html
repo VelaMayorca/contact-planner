@@ -6,6 +6,8 @@
 <title>Vela Mayorca Planning App</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect x='3' y='4' width='18' height='17' rx='2' fill='%232d7db3'/%3E%3Crect x='3' y='4' width='18' height='5' rx='2' fill='%2308213a'/%3E%3Cline x1='7' y1='2' x2='7' y2='6' stroke='%2308213a' stroke-width='2' stroke-linecap='round'/%3E%3Cline x1='17' y1='2' x2='17' y2='6' stroke='%2308213a' stroke-width='2' stroke-linecap='round'/%3E%3Crect x='6' y='11' width='3' height='3' fill='%234abfb0'/%3E%3Crect x='10.5' y='11' width='3' height='3' fill='%23faf7f2'/%3E%3Crect x='15' y='11' width='3' height='3' fill='%234abfb0'/%3E%3Crect x='6' y='15' width='3' height='3' fill='%23faf7f2'/%3E%3Crect x='10.5' y='15' width='3' height='3' fill='%234abfb0'/%3E%3C/svg%3E">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Inter:wght@400;500;600;700&display=swap');
   *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
@@ -263,6 +265,29 @@
   .split-amount-total{font-size:0.78rem;font-weight:600;padding:6px 10px;border-radius:8px;white-space:nowrap;}
   .split-amount-total.ok{background:#dcfce7;color:var(--success);}
   .split-amount-total.warn{background:#fef3c7;color:#b45309;}
+  /* Contratos tab */
+  .contrato-list{padding:16px;}
+  .contrato-date-header{font-size:0.75rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;padding:8px 0 6px;border-bottom:1px solid var(--border);margin-bottom:10px;}
+  .contrato-row{display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--white);border:1px solid var(--border);border-radius:12px;margin-bottom:8px;}
+  .contrato-row-info{flex:1;min-width:0;}
+  .contrato-row-time{font-size:0.78rem;font-weight:700;color:var(--blue);white-space:nowrap;}
+  .contrato-row-title{font-size:0.9rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .contrato-row-sub{font-size:0.75rem;color:var(--muted);}
+  .btn-generar{background:var(--blue);color:#fff;border:none;border-radius:8px;padding:8px 14px;font-size:0.78rem;font-weight:700;cursor:pointer;white-space:nowrap;}
+  .btn-generar:hover{opacity:0.9;}
+  .contrato-empty{text-align:center;padding:40px 20px;color:var(--muted);}
+  /* Contract document print layout */
+  .cdoc-title{text-align:center;font-size:15px;font-weight:bold;text-transform:uppercase;margin-bottom:18px;letter-spacing:0.08em;}
+  .cdoc-intro{margin-bottom:14px;}
+  .cdoc-section{margin-bottom:14px;}
+  .cdoc-section-title{font-weight:bold;text-decoration:underline;margin-bottom:4px;}
+  .cdoc-field{margin-bottom:3px;}
+  .cdoc-field span{font-weight:bold;}
+  .cdoc-sig-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:24px;border-top:1px solid #ccc;padding-top:16px;}
+  .cdoc-sig-box{text-align:center;}
+  .cdoc-sig-img{height:70px;width:100%;object-fit:contain;display:block;margin-bottom:4px;}
+  .cdoc-sig-placeholder{height:70px;border-bottom:1px solid #333;margin-bottom:4px;}
+  .cdoc-sig-label{font-size:11px;font-weight:bold;}
 </style>
 </head>
 <body>
@@ -285,11 +310,46 @@
   <div class="tab" onclick="switchTab('calendar')" id="tab-calendar">&#128467; Calendario</div>
   <div class="tab" onclick="switchTab('history')" id="tab-history">&#128337; Historico</div>
   <div class="tab" onclick="switchTab('payments')" id="tab-payments">&#9973; Tours</div>
+  <div class="tab" onclick="switchTab('contratos')" id="tab-contratos">&#128221; Contratos</div>
   <div class="tab" onclick="switchTab('stats')" id="tab-stats">&#128202; Estadisticas</div>
   <div class="tab" onclick="switchTab('arreglos')" id="tab-arreglos">&#128295; Arreglos</div>
   <div class="tab" onclick="switchTab('compras')" id="tab-compras">&#128722; Compras</div>
 </div>
 <main>
+  <!-- Contract modal -->
+  <div id="contractModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:9000;overflow-y:auto;padding:20px 0;">
+    <div style="max-width:720px;margin:0 auto;background:var(--white);border-radius:16px;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,0.4);">
+      <!-- Modal header -->
+      <div style="background:var(--blue);padding:16px 20px;display:flex;align-items:center;justify-content:space-between;gap:12px;">
+        <span style="color:#fff;font-weight:700;font-size:1rem;">&#128221; Contrato de Excursión</span>
+        <div style="display:flex;gap:8px;">
+          <button onclick="downloadContractPDF()" style="background:#fff;color:var(--blue);border:none;border-radius:8px;padding:8px 16px;font-weight:700;cursor:pointer;font-size:0.85rem;">&#11015; Descargar PDF</button>
+          <button onclick="closeContract()" style="background:rgba(255,255,255,0.2);color:#fff;border:none;border-radius:8px;padding:8px 14px;cursor:pointer;font-size:1rem;">&#10005;</button>
+        </div>
+      </div>
+      <!-- Contract document (captured for PDF) -->
+      <div id="contractDoc" style="padding:40px 48px;font-family:'Times New Roman',serif;font-size:13px;line-height:1.6;color:#111;background:#fff;">
+        <!-- filled by openContract() -->
+      </div>
+      <!-- Signature pads (below doc, not included in PDF area) -->
+      <div style="padding:20px 24px;background:#f8fafc;border-top:1px solid var(--border);">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+          <div>
+            <div style="font-size:0.78rem;font-weight:600;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:0.05em;">Firma del arrendatario</div>
+            <canvas id="sigClient" width="280" height="110" style="border:2px dashed var(--border);border-radius:8px;background:#fff;touch-action:none;width:100%;cursor:crosshair;"></canvas>
+            <button onclick="clearSig('sigClient')" style="margin-top:6px;background:none;border:1px solid var(--border);border-radius:6px;padding:4px 12px;font-size:0.75rem;cursor:pointer;color:var(--muted);">&#10005; Limpiar</button>
+          </div>
+          <div>
+            <div style="font-size:0.78rem;font-weight:600;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:0.05em;">Firma del patrón</div>
+            <canvas id="sigCaptain" width="280" height="110" style="border:2px dashed var(--border);border-radius:8px;background:#fff;touch-action:none;width:100%;cursor:crosshair;"></canvas>
+            <button onclick="clearSig('sigCaptain')" style="margin-top:6px;background:none;border:1px solid var(--border);border-radius:6px;padding:4px 12px;font-size:0.75rem;cursor:pointer;color:var(--muted);">&#10005; Limpiar</button>
+          </div>
+        </div>
+        <p style="font-size:0.72rem;color:var(--muted);margin-top:12px;text-align:center;">Firmar con el dedo o ratón · Al descargar el PDF las firmas quedan incluidas en el documento</p>
+      </div>
+    </div>
+  </div>
+
   <!-- Debug log modal -->
   <div id="debugModal">
     <div class="debug-box">
@@ -324,6 +384,7 @@
     <div id="view-stats" style="display:none"></div>
     <div id="view-arreglos" style="display:none"></div>
     <div id="view-compras" style="display:none"></div>
+    <div id="view-contratos" style="display:none"></div>
   </div>
 </main>
 
@@ -365,6 +426,17 @@ const CLIENT_ID=_a+_b, CLIENT_SECRET=_c+_d, SUPABASE_URL=_e+_f, SUPABASE_KEY=_g+
 const CALENDAR_NAMES=['SARAH','BTP'], ADMIN_KEY='vela-admin-2024';
 const BOATS=['Servus','Gambitero','Trui','Jaleo','RunWild'];
 const SKIPPERS=['Edu','Alberto','Silvio','Jaume','Gustavo','Leandro','Madhur','Parreño','Otro...'];
+const BOAT_REG={'Gambitero':'6ª PM-1-221-22','Trui':'6ª AT-6-20-06','Servus':'6ª BA-2-17-05','RunWild':'SSR27173','Jaleo':'6ª PM-1-31-26'};
+const SKIPPER_FULL={
+  'Edu':{name:'Eduardo Gonzalez Romero',license:'PPER'},
+  'Alberto':{name:'Alberto Maura Castilla',license:'PPER'},
+  'Silvio':{name:'Silvio Gelmetti Rios',license:'PPER'},
+  'Jaume':{name:'Jaume Codina Roselló',license:'PY'},
+  'Gustavo':{name:'Gustavo Prego Barros',license:'PPER'},
+  'Leandro':{name:'Leandro Gutierrez Patane',license:'PPER'},
+  'Madhur':{name:'Madhur Beriain San Martin',license:'PPER'},
+  'Parreño':{name:'Daniel Parreño Pallicer',license:'PPER'}
+};
 
 const urlParams=new URLSearchParams(window.location.search);
 const isAdmin=urlParams.get('admin')===ADMIN_KEY||localStorage.getItem('vt_admin')===ADMIN_KEY;
@@ -1827,10 +1899,264 @@ function calSelectDay(ds){
   renderCalendarGrid();
 }
 
+/* ── CONTRATOS ────────────────────────────────────────────── */
+
+let _contractDateStr=toDateStr(new Date());
+
+function renderContratos(){
+  const el=document.getElementById('view-contratos');
+  if(!el)return;
+
+  // Date picker header
+  let h='<div class="contrato-list">';
+  h+='<div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">';
+  h+='<button onclick="contratosChangeDate(-1)" style="background:none;border:1px solid var(--border);border-radius:8px;padding:6px 12px;cursor:pointer;">&#8592;</button>';
+  const dto=new Date(_contractDateStr+'T12:00:00');
+  const label=dto.toLocaleDateString('es-ES',{weekday:'long',day:'numeric',month:'long'});
+  h+='<span style="flex:1;text-align:center;font-weight:700;font-size:0.95rem;">'+label.charAt(0).toUpperCase()+label.slice(1)+'</span>';
+  h+='<button onclick="contratosChangeDate(1)" style="background:none;border:1px solid var(--border);border-radius:8px;padding:6px 12px;cursor:pointer;">&#8594;</button>';
+  h+='</div>';
+
+  // Filter bookings for selected date
+  const bks=allBookings.filter(b=>b.date===_contractDateStr).sort((a,bk)=>a.start.localeCompare(bk.start));
+
+  if(!bks.length){
+    h+='<div class="contrato-empty">&#128221; Sin tours este día</div>';
+  } else {
+    bks.forEach(b=>{
+      const p=b.parsed, n=allNotes[b.id]||{};
+      const skipKey=n.skipper||'';
+      const skipData=SKIPPER_FULL[skipKey]||{name:skipKey||'—',license:'—'};
+      const boatKey=n.boat||'';
+      const reg=BOAT_REG[boatKey]||'—';
+      const client=n.client_name||p.buyer||'—';
+      h+='<div class="contrato-row">';
+      h+='<div class="contrato-row-info">';
+      h+='<div class="contrato-row-time">'+formatTime(b.start)+' – '+formatTime(b.end)+'</div>';
+      h+='<div class="contrato-row-title">'+esc(b.title)+'</div>';
+      h+='<div class="contrato-row-sub">'+esc(client)+' · '+esc(boatKey||'Sin barco')+' · '+esc(skipData.name)+'</div>';
+      h+='</div>';
+      h+='<button class="btn-generar" onclick="openContract(\''+esc(b.id)+'\')">&#128221; Generar</button>';
+      h+='</div>';
+    });
+  }
+  h+='</div>';
+  el.innerHTML=h;
+}
+
+function contratosChangeDate(delta){
+  const d=new Date(_contractDateStr+'T12:00:00');
+  d.setDate(d.getDate()+delta);
+  _contractDateStr=toDateStr(d);
+  renderContratos();
+}
+
+function openContract(bookingId){
+  const b=allBookings.find(x=>x.id===bookingId);
+  if(!b){alert('Reserva no encontrada');return;}
+  const p=b.parsed, n=allNotes[b.id]||{};
+  const skipKey=n.skipper||'';
+  const skipData=SKIPPER_FULL[skipKey]||{name:skipKey||'—',license:'—'};
+  const boatKey=n.boat||'';
+  const reg=BOAT_REG[boatKey]||'—';
+  const client=n.client_name||p.buyer||'—';
+  const price=n.balance?n.balance.toFixed(2)+' €':'—';
+  const dateDto=new Date(b.date+'T12:00:00');
+  const dateLabel=dateDto.toLocaleDateString('es-ES',{day:'numeric',month:'long',year:'numeric'});
+  const hourLabel=formatTime(b.start);
+
+  const doc=document.getElementById('contractDoc');
+  doc.innerHTML=`
+    <div class="cdoc-title">Contrato de excursiones náuticas</div>
+    <div class="cdoc-intro">En Mallorca, a <b>${esc(dateLabel)}</b></div>
+    <div class="cdoc-intro">Contrato celebrado entre las siguientes partes:</div>
+
+    <div class="cdoc-section">
+      <div class="cdoc-section-title">PROPIETARIO – ARRENDADOR</div>
+      <div class="cdoc-field">Nombre: <span>Vela Mayorca SL</span></div>
+      <div class="cdoc-field">Dirección: <span>Simó Ballester 9, Bajos. 07011 Palma de Mallorca</span></div>
+      <div class="cdoc-field">CIF: <span>B02669067</span></div>
+      <div class="cdoc-field">Email: <span>info@velamayorca.com</span></div>
+    </div>
+
+    <div class="cdoc-section">
+      <div class="cdoc-section-title">CLIENTE – ARRENDATARIO</div>
+      <div class="cdoc-field">Nombre: <span>${esc(client)}</span></div>
+    </div>
+
+    <div class="cdoc-section">
+      <div class="cdoc-section-title">Características de la embarcación</div>
+      <div class="cdoc-field">Nombre: <span>${esc(boatKey||'—')}</span> &nbsp;|&nbsp; Matrícula: <span>${esc(reg)}</span></div>
+    </div>
+
+    <div class="cdoc-section">
+      <div class="cdoc-section-title">Capitán designado</div>
+      <div class="cdoc-field">Nombre: <span>${esc(skipData.name)}</span></div>
+      <div class="cdoc-field">Título náutico: <span>${esc(skipData.license)}</span></div>
+    </div>
+
+    <div class="cdoc-section">
+      <div class="cdoc-section-title">Datos del alquiler</div>
+      <div class="cdoc-field">Cuota total de alquiler (IVA 21% incluido): <span>${esc(price)}</span></div>
+      <div class="cdoc-field">Ruta de la excursión: <span>PALMA – PALMA</span></div>
+      <div class="cdoc-field">Fecha alquiler: <span>${esc(dateLabel)}</span></div>
+      <div class="cdoc-field">Hora de salida: <span>${esc(hourLabel)}</span></div>
+    </div>
+
+    <div style="margin-top:12px;font-size:12px;">En Palma de Mallorca a <b>${esc(dateLabel)}</b></div>
+
+    <div class="cdoc-sig-row" id="docSigRow">
+      <div class="cdoc-sig-box">
+        <div class="cdoc-sig-placeholder" id="sigSlotVela"></div>
+        <div class="cdoc-sig-label">Vela Mayorca SL</div>
+      </div>
+      <div class="cdoc-sig-box">
+        <div class="cdoc-sig-placeholder" id="sigSlotClient"></div>
+        <div class="cdoc-sig-label">El arrendatario</div>
+      </div>
+      <div class="cdoc-sig-box">
+        <div class="cdoc-sig-placeholder" id="sigSlotCaptain"></div>
+        <div class="cdoc-sig-label">El poseedor del título</div>
+      </div>
+    </div>
+  `;
+
+  // Store current booking id for PDF download
+  document.getElementById('contractModal')._bookingId=bookingId;
+  document.getElementById('contractModal').style.display='block';
+  document.body.style.overflow='hidden';
+
+  // Init signature pads after modal is visible
+  requestAnimationFrame(()=>{
+    clearSig('sigClient');
+    clearSig('sigCaptain');
+    initSigPad('sigClient');
+    initSigPad('sigCaptain');
+  });
+}
+
+function closeContract(){
+  document.getElementById('contractModal').style.display='none';
+  document.body.style.overflow='';
+}
+
+function initSigPad(canvasId){
+  const canvas=document.getElementById(canvasId);
+  if(!canvas)return;
+  // Scale for device pixel ratio
+  const rect=canvas.getBoundingClientRect();
+  const dpr=window.devicePixelRatio||1;
+  canvas.width=Math.round(rect.width*dpr);
+  canvas.height=Math.round(rect.height*dpr);
+  const ctx=canvas.getContext('2d');
+  ctx.scale(dpr,dpr);
+  ctx.strokeStyle='#1a1a1a';
+  ctx.lineWidth=2;
+  ctx.lineCap='round';
+  ctx.lineJoin='round';
+  let drawing=false,lastX=0,lastY=0;
+
+  function pos(e){
+    const r=canvas.getBoundingClientRect();
+    const src=e.touches?e.touches[0]:e;
+    return {x:(src.clientX-r.left),y:(src.clientY-r.top)};
+  }
+  function start(e){e.preventDefault();drawing=true;const p=pos(e);lastX=p.x;lastY=p.y;ctx.beginPath();ctx.moveTo(p.x,p.y);}
+  function move(e){e.preventDefault();if(!drawing)return;const p=pos(e);ctx.lineTo(p.x,p.y);ctx.stroke();lastX=p.x;lastY=p.y;}
+  function end(e){drawing=false;}
+
+  canvas.addEventListener('mousedown',start);
+  canvas.addEventListener('mousemove',move);
+  canvas.addEventListener('mouseup',end);
+  canvas.addEventListener('mouseleave',end);
+  canvas.addEventListener('touchstart',start,{passive:false});
+  canvas.addEventListener('touchmove',move,{passive:false});
+  canvas.addEventListener('touchend',end);
+}
+
+function clearSig(canvasId){
+  const canvas=document.getElementById(canvasId);
+  if(!canvas)return;
+  const ctx=canvas.getContext('2d');
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+}
+
+function _sigIsEmpty(canvas){
+  const ctx=canvas.getContext('2d');
+  const data=ctx.getImageData(0,0,canvas.width,canvas.height).data;
+  for(let i=3;i<data.length;i+=4){if(data[i]>10)return false;}
+  return true;
+}
+
+async function downloadContractPDF(){
+  const btn=document.querySelector('#contractModal button[onclick="downloadContractPDF()"]');
+  const orig=btn.textContent;
+  btn.textContent='Generando...';btn.disabled=true;
+
+  try{
+    // Embed signatures into the document before capture
+    const slotClient=document.getElementById('sigSlotClient');
+    const slotCaptain=document.getElementById('sigSlotCaptain');
+    const cvClient=document.getElementById('sigClient');
+    const cvCaptain=document.getElementById('sigCaptain');
+
+    function embedSig(slot,canvas){
+      slot.innerHTML='';
+      if(!_sigIsEmpty(canvas)){
+        const img=document.createElement('img');
+        img.src=canvas.toDataURL('image/png');
+        img.className='cdoc-sig-img';
+        slot.appendChild(img);
+      }
+    }
+    embedSig(slotClient,cvClient);
+    embedSig(slotCaptain,cvCaptain);
+
+    const docEl=document.getElementById('contractDoc');
+    const canvas=await html2canvas(docEl,{scale:2,useCORS:true,backgroundColor:'#ffffff',logging:false});
+    const imgData=canvas.toDataURL('image/png');
+
+    const {jsPDF}=window.jspdf;
+    const pdf=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
+    const pdfW=pdf.internal.pageSize.getWidth();
+    const pdfH=pdf.internal.pageSize.getHeight();
+    const ratio=canvas.height/canvas.width;
+    const imgW=pdfW-20;
+    const imgH=imgW*ratio;
+    let y=10;
+    if(imgH<=pdfH-20){
+      pdf.addImage(imgData,'PNG',10,y,imgW,imgH);
+    } else {
+      // Multi-page if needed
+      let srcY=0;
+      const pageImgH=pdfH-20;
+      const srcPageH=Math.floor(pageImgH*canvas.width/imgW);
+      while(srcY<canvas.height){
+        const tmp=document.createElement('canvas');
+        tmp.width=canvas.width;
+        tmp.height=Math.min(srcPageH,canvas.height-srcY);
+        tmp.getContext('2d').drawImage(canvas,0,srcY,canvas.width,tmp.height,0,0,canvas.width,tmp.height);
+        pdf.addImage(tmp.toDataURL('image/png'),'PNG',10,10,imgW,tmp.height*imgW/canvas.width);
+        srcY+=srcPageH;
+        if(srcY<canvas.height)pdf.addPage();
+      }
+    }
+
+    const bookingId=document.getElementById('contractModal')._bookingId||'contrato';
+    const b=allBookings.find(x=>x.id===bookingId);
+    const fname='contrato_'+(b?b.date:'')+'_'+((allNotes[bookingId]?.boat||'barco').replace(/\s+/g,'_'))+'.pdf';
+    pdf.save(fname);
+  } catch(e){
+    alert('Error generando PDF: '+e.message);
+  } finally {
+    btn.textContent=orig;btn.disabled=false;
+  }
+}
+
 function switchTab(tab){
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
   document.getElementById('tab-'+tab).classList.add('active');
-  ['today','tomorrow','week','calendar','history','payments','stats','arreglos','compras'].forEach(v=>{document.getElementById('view-'+v).style.display=v===tab?'block':'none';});
+  ['today','tomorrow','week','calendar','history','payments','stats','arreglos','compras','contratos'].forEach(v=>{document.getElementById('view-'+v).style.display=v===tab?'block':'none';});
   if(tab==='history')renderHistory();
   if(tab==='today')renderToday();
   if(tab==='tomorrow')renderTomorrow();
@@ -1850,6 +2176,7 @@ function switchTab(tab){
     renderPayments();
   }
   if(tab==='stats')renderStats();
+  if(tab==='contratos'){_contractDateStr=toDateStr(new Date());renderContratos();}
   if(tab==='arreglos')renderArreglos();
   if(tab==='compras')renderCompras();
 }
