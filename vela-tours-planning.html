@@ -1939,7 +1939,6 @@ function renderContratos(){
       h+='<div class="time-col"><div class="time-big">'+formatTime(b.start)+'</div><div class="time-end">'+formatTime(b.end)+'</div></div>';
       h+='<div class="divider-v"></div>';
       h+='<div class="info-col">';
-      h+='<div class="booking-title">'+esc(b.title)+'</div>';
       if(client)h+='<div style="font-size:0.83rem;color:var(--text);font-weight:600;margin-top:3px;">&#128100; '+esc(client)+(pax?' · '+pax+' pax':'')+'</div>';
       h+='<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;">';
       if(boatKey)h+='<span style="background:#dbeafe;color:var(--blue);border-radius:10px;padding:2px 9px;font-size:0.75rem;font-weight:700;">&#9973; '+esc(boatKey)+'</span>';
