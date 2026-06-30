@@ -1575,40 +1575,57 @@ function showExport(which){
   if(which==='tomorrow')base.setDate(base.getDate()+1);
   const tStr=toDateStr(base);
   const dayBookings=filterBookings(allBookings.filter(b=>b.date===tStr));
-  if(!dayBookings.length){alert('No hay reservas para '+(which==='today'?'hoy':'manana')+'.');return;}
-  const weekdays=['Domingo','Lunes','Martes','Miercoles','Jueves','Viernes','Sabado'];
+  if(!dayBookings.length){alert('No hay reservas para '+(which==='today'?'hoy':'mañana')+'.');return;}
+  const weekdays=['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
   const months=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
   const d=new Date(tStr+'T12:00:00');
-  let text='*'+weekdays[d.getDay()]+' '+d.getDate()+' '+months[d.getMonth()]+'*\n\n';
+  const sep='─────────────────────';
+  let text='*📅 '+weekdays[d.getDay()]+', '+d.getDate()+' de '+months[d.getMonth()]+'*\n';
+  text+=sep+'\n\n';
   for(let i=0;i<dayBookings.length;i++){
     const b=dayBookings[i],n=allNotes[b.id]||{},p=b.parsed;
     const phone=n.phone||p.phone||'';
     const flag=getFlag(phone);
-    const time=formatTime(b.start);
+    const timeStart=formatTime(b.start);
+    const timeEnd=formatTime(b.end);
     const boat=n.boat||'--';
     const pax=parseInt(n.pax||p.pax)||0;
-    const balance=n.balance?n.balance+'€':'--';
-    const skipper=n.skipper?n.skipper.toUpperCase():'--';
+    const balance=n.balance?n.balance+'€':'';
+    const skipper=n.skipper||'--';
+    const client=n.client_name||p.buyer||'';
     const tapas=parseInt(n.food_tapas)||0;
     const fish=parseInt(n.food_fish)||0;
     const meat=parseInt(n.food_meat)||0;
     const veggie=parseInt(n.food_veggie)||0;
-    if(i>0)text+='\n';
-    // Line 1: boat, time, pax, skipper, flag
-    text+='⛵ *'+boat+'* '+time+' → '+pax+'pax · 👤'+skipper+' '+flag+'\n';
-    // Line 2: food + comment + extras + balance
+    // Line 1: index, boat, time, pax
+    text+='*'+(i+1)+'.* ⛵ *'+boat+'*   🕐 '+timeStart+' – '+timeEnd+'   👥 '+pax+' pax\n';
+    // Line 2: client + phone
+    if(client||phone){
+      text+='    👤 '+(client||'Sin nombre');
+      if(phone)text+='   📞 '+phone+(flag?' '+flag:'');
+      text+='\n';
+    }
+    // Line 3: skipper
+    text+='    🧑‍✈️ '+skipper+'\n';
+    // Line 4: food
     const foodParts=[];
-    if(tapas>0)foodParts.push((tapas!==pax?tapas+'x ':'')+' Tapas');
-    if(fish>0)foodParts.push((fish!==pax?fish+'x ':'')+' Fish Paella');
-    if(meat>0)foodParts.push((meat!==pax?meat+'x ':'')+' Meat Paella');
-    if(veggie>0)foodParts.push((veggie!==pax?veggie+'x ':'')+' Veggie Paella');
-    const line2parts=[];
-    if(foodParts.length>0)line2parts.push(foodParts.join('+'));
-    if(n.comment)line2parts.push(n.comment);
-    if(n.extras)line2parts.push(n.extras);
-    line2parts.push('💰'+balance);
-    text+=line2parts.join(' · ')+'\n';
+    if(tapas>0)foodParts.push(tapas+'x Tapas');
+    if(fish>0)foodParts.push(fish+'x Fish Paella');
+    if(meat>0)foodParts.push(meat+'x Meat Paella');
+    if(veggie>0)foodParts.push(veggie+'x Veggie Paella');
+    if(foodParts.length>0)text+='    🍽️ '+foodParts.join(' · ')+'\n';
+    // Line 5: extras + comment + balance
+    const extra=[];
+    if(n.extras)extra.push('✨ '+n.extras);
+    if(n.comment)extra.push('💬 '+n.comment);
+    if(balance)extra.push('💰 '+balance);
+    if(extra.length>0)text+='    '+extra.join('   ')+'\n';
+    text+='\n'+sep+'\n\n';
   }
+  // Footer totals
+  const totalPax=dayBookings.reduce((s,b)=>s+(parseInt(allNotes[b.id]?.pax||b.parsed.pax)||0),0);
+  const totalBalance=dayBookings.reduce((s,b)=>s+(parseFloat(allNotes[b.id]?.balance)||0),0);
+  text+='*Total: '+dayBookings.length+' tours · '+totalPax+' pax'+(totalBalance>0?' · 💰 '+totalBalance.toLocaleString('es-ES')+'€':'')+' *';
   document.getElementById('exportText').textContent=text;
   document.getElementById('exportModal').style.display='flex';
 }
