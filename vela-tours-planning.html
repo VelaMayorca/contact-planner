@@ -1598,7 +1598,7 @@ function showExport(which){
     const meat=parseInt(n.food_meat)||0;
     const veggie=parseInt(n.food_veggie)||0;
     // Line 1: index, boat, time, pax
-    text+='*'+(i+1)+'.* ⛵ *'+boat+'*   🕐 '+timeStart+' – '+timeEnd+'   👥 '+pax+' pax\n';
+    text+='⛵ *'+boat+'*   🕐 '+timeStart+' – '+timeEnd+'   👥 '+pax+' pax\n';
     // Line 2: client + phone
     if(client||phone){
       text+='    👤 '+(client||'Sin nombre');
@@ -1622,10 +1622,6 @@ function showExport(which){
     if(extra.length>0)text+='    '+extra.join('   ')+'\n';
     text+='\n'+sep+'\n\n';
   }
-  // Footer totals
-  const totalPax=dayBookings.reduce((s,b)=>s+(parseInt(allNotes[b.id]?.pax||b.parsed.pax)||0),0);
-  const totalBalance=dayBookings.reduce((s,b)=>s+(parseFloat(allNotes[b.id]?.balance)||0),0);
-  text+='*Total: '+dayBookings.length+' tours · '+totalPax+' pax'+(totalBalance>0?' · 💰 '+totalBalance.toLocaleString('es-ES')+'€':'')+' *';
   document.getElementById('exportText').textContent=text;
   document.getElementById('exportModal').style.display='flex';
 }
