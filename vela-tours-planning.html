@@ -19,6 +19,9 @@
   .header-right{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
   .sync-info{font-size:0.7rem;color:var(--muted);white-space:nowrap;}
   .today-badge{font-size:0.75rem;font-weight:600;color:var(--teal);border:1.5px solid var(--teal);border-radius:20px;padding:3px 10px;}
+  .role-badge{font-size:0.7rem;font-weight:700;border-radius:20px;padding:3px 10px;letter-spacing:0.04em;}
+  .role-badge-admin{background:var(--blue);color:#fff;}
+  .role-badge-user{background:#374151;color:#e5e7eb;}
   .btn{border:none;border-radius:8px;padding:7px 14px;font-family:'Inter',sans-serif;font-size:0.8rem;font-weight:600;cursor:pointer;transition:opacity 0.2s;display:inline-flex;align-items:center;gap:5px;}
   .btn:hover{opacity:0.85;}.btn:disabled{opacity:0.5;pointer-events:none;}
   .btn-blue{background:var(--blue);color:#fff;}.btn-deep{background:var(--deep);color:#fff;}.btn-danger{background:var(--danger);color:#fff;}.btn-teal{background:var(--teal);color:#fff;}
@@ -296,6 +299,7 @@
   <div class="header-right">
     <div class="sync-info" id="syncInfo"></div>
     <div class="today-badge" id="todayBadge"></div>
+    <div id="roleBadge" style="display:none"></div>
     <button class="btn btn-teal" id="btnSync" onclick="syncCalendar()" style="display:none">&#8645; Sync</button>
     <button class="btn btn-blue" id="btnRefresh" onclick="loadFromSupabase()" style="display:none">&#8635;</button>
     <button class="btn" id="btnEmployeeView" onclick="window.open(location.pathname+'?view=pagos','_blank')" style="display:none;background:#f1f5f9;color:var(--text)">&#128065; Empleado</button>
@@ -2206,7 +2210,24 @@ function showLogin(){document.getElementById('loginScreen').style.display='flex'
 function showApp(admin){
   document.getElementById('loginScreen').style.display='none';
   document.getElementById('appContent').style.display='block';
-  if(isPaymentsOnly){
+  // Role badge
+  const rb=document.getElementById('roleBadge');
+  if(rb){
+    const a=admin||isAdmin;
+    rb.textContent=a?'Admin':'User';
+    rb.className='role-badge '+(a?'role-badge-admin':'role-badge-user');
+    rb.style.display='inline-block';
+  }
+  if(isContratosOnly){
+    document.getElementById('tabBar').style.display='flex';
+    ['today','tomorrow','week','calendar','history','payments','stats','arreglos','compras'].forEach(t=>{
+      const el=document.getElementById('tab-'+t);if(el)el.style.display='none';
+    });
+    ['today','tomorrow','week','calendar','history','payments','stats','arreglos','compras'].forEach(v=>{
+      const el=document.getElementById('view-'+v);if(el)el.style.display='none';
+    });
+    document.getElementById('btnRefresh').style.display='inline-flex';
+  }else if(isPaymentsOnly){
     // Show tabBar but only Pagos + Arreglos tabs
     document.getElementById('tabBar').style.display='flex';
     ['today','tomorrow','week','calendar','history','stats'].forEach(t=>{document.getElementById('tab-'+t).style.display='none';});
@@ -2214,7 +2235,21 @@ function showApp(admin){
   }else{
     document.getElementById('tabBar').style.display='flex';
     document.getElementById('btnRefresh').style.display='inline-flex';
-    if(admin||isAdmin){document.getElementById('btnSync').style.display='inline-flex';document.getElementById('btnEmployeeView').style.display='inline-flex';document.getElementById('btnLogout').style.display='inline-flex';showDebugBtn();}
+    if(admin||isAdmin){
+      document.getElementById('btnSync').style.display='inline-flex';
+      document.getElementById('btnEmployeeView').style.display='inline-flex';
+      document.getElementById('btnLogout').style.display='inline-flex';
+      showDebugBtn();
+    }else{
+      // Non-admin: hide planning tabs, show only Tours/Contratos/Arreglos/Compras
+      ['today','tomorrow','week','calendar','history','stats'].forEach(t=>{
+        const el=document.getElementById('tab-'+t);if(el)el.style.display='none';
+      });
+      // Default view: Tours (hide tomorrow which is visible by default)
+      document.getElementById('view-tomorrow').style.display='none';
+      document.querySelector('.tab.active')?.classList.remove('active');
+      document.getElementById('tab-payments').classList.add('active');
+    }
   }
 }
 function showLoading(msg){['tomorrow','week'].forEach(v=>{document.getElementById('view-'+v).innerHTML='<div class="state-screen"><div class="icon spinning">&#8635;</div><h2>'+(msg||'Cargando...')+'</h2></div>';});}
@@ -2226,7 +2261,7 @@ updateSyncInfo();
 (async function init(){
   const params=new URLSearchParams(window.location.search);
   const code=params.get('code'),error=params.get('error');
-  if(isAdmin){
+  if(isAdmin && !isContratosOnly && !isPaymentsOnly){
     if(error){showLogin();alert('Error Google: '+error);return;}
     if(code){await handleCallback(code);return;}
     if(loadToken()){showApp(true);await syncCalendar();startAutoSync();}
@@ -2240,10 +2275,15 @@ updateSyncInfo();
       renderPayments();
     }
     if(isContratosOnly){
-      document.getElementById('view-contratos').style.display='block';
+      document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
       document.getElementById('tab-contratos').classList.add('active');
+      document.getElementById('view-contratos').style.display='block';
       _contractDateStr=toDateStr(new Date());
       renderContratos();
+    }else if(!isPaymentsOnly){
+      // Default non-admin view: Tours
+      document.getElementById('view-payments').style.display='block';
+      renderPayments();
     }
   }
 })();
