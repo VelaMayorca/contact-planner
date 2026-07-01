@@ -442,6 +442,7 @@ const urlParams=new URLSearchParams(window.location.search);
 const isAdmin=urlParams.get('admin')===ADMIN_KEY||localStorage.getItem('vt_admin')===ADMIN_KEY;
 if(urlParams.get('admin')===ADMIN_KEY){localStorage.setItem('vt_admin',ADMIN_KEY);window.history.replaceState({},'',window.location.pathname);}
 const isPaymentsOnly=urlParams.get('view')==='pagos';
+const isContratosOnly=urlParams.get('view')==='contratos';
 
 const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 
@@ -2237,6 +2238,12 @@ updateSyncInfo();
       document.getElementById('view-payments').style.display='block';
       document.getElementById('tab-payments').classList.add('active');
       renderPayments();
+    }
+    if(isContratosOnly){
+      document.getElementById('view-contratos').style.display='block';
+      document.getElementById('tab-contratos').classList.add('active');
+      _contractDateStr=toDateStr(new Date());
+      renderContratos();
     }
   }
 })();
