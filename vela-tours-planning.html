@@ -21,7 +21,8 @@
   .today-badge{font-size:0.75rem;font-weight:600;color:var(--teal);border:1.5px solid var(--teal);border-radius:20px;padding:3px 10px;}
   .role-badge{font-size:0.7rem;font-weight:700;border-radius:20px;padding:3px 10px;letter-spacing:0.04em;}
   .role-badge-admin{background:var(--blue);color:#fff;}
-  .role-badge-user{background:#374151;color:#e5e7eb;}
+  .role-badge-user{background:#374151;color:#e5e7eb;cursor:pointer;}
+  .role-badge-user:hover{background:#4b5563;}
   .btn{border:none;border-radius:8px;padding:7px 14px;font-family:'Inter',sans-serif;font-size:0.8rem;font-weight:600;cursor:pointer;transition:opacity 0.2s;display:inline-flex;align-items:center;gap:5px;}
   .btn:hover{opacity:0.85;}.btn:disabled{opacity:0.5;pointer-events:none;}
   .btn-blue{background:var(--blue);color:#fff;}.btn-deep{background:var(--deep);color:#fff;}.btn-danger{background:var(--danger);color:#fff;}.btn-teal{background:var(--teal);color:#fff;}
@@ -91,9 +92,15 @@
   .booking-card:hover{border-color:var(--blue);}
 
   .card-top{padding:14px 18px;display:flex;align-items:flex-start;gap:12px;}
-  .time-col{flex-shrink:0;text-align:center;min-width:48px;cursor:pointer;}
+  .time-col{flex-shrink:0;text-align:center;min-width:56px;cursor:pointer;}
   .time-big{font-family:'DM Serif Display',serif;font-size:1.2rem;color:var(--blue);line-height:1;}
   .time-end{font-size:0.68rem;color:var(--muted);margin-top:2px;}
+  .time-edit{display:block;width:64px;font-family:'Inter',sans-serif;font-weight:700;font-size:0.95rem;color:var(--blue);border:none;background:transparent;padding:0;text-align:center;cursor:pointer;outline:none;}
+  .time-edit::-webkit-calendar-picker-indicator{display:none;}
+  .time-edit-end{font-size:0.72rem;color:var(--muted);font-weight:500;margin-top:3px;}
+  .btn-no-export{background:#f1f5f9;color:#64748b;border:1px solid #cbd5e1;}
+  .btn-no-export-on{background:#fee2e2;color:#dc2626;border:1px solid #fca5a5;font-weight:700;}
+  .no-export-badge{background:#fee2e2;color:#dc2626;font-size:0.65rem;font-weight:700;border-radius:8px;padding:1px 6px;margin-left:6px;vertical-align:middle;}
   .divider-v{width:1px;background:var(--border);align-self:stretch;flex-shrink:0;}
   .info-col{flex:1;min-width:0;cursor:pointer;}
   .booking-title{font-weight:700;font-size:0.95rem;color:var(--text);margin-bottom:3px;}
@@ -444,7 +451,7 @@ const SKIPPER_FULL={
 
 const urlParams=new URLSearchParams(window.location.search);
 const isAdmin=urlParams.get('admin')===ADMIN_KEY||localStorage.getItem('vt_admin')===ADMIN_KEY;
-if(urlParams.get('admin')===ADMIN_KEY){localStorage.setItem('vt_admin',ADMIN_KEY);window.history.replaceState({},'',window.location.pathname);}
+if(urlParams.get('admin')===ADMIN_KEY){localStorage.setItem('vt_admin',ADMIN_KEY);}
 const isPaymentsOnly=urlParams.get('view')==='pagos';
 const isContratosOnly=urlParams.get('view')==='contratos';
 
@@ -917,11 +924,17 @@ function renderCard(b){
   const isReminder=n.contacted==='reminder';
   const cardBg=isReminder?' is-ready':isContacted?' is-contacted':'';
   let html='<div class="booking-card'+cardBg+'" id="card-'+sid+'">';
+  const noExport=n.no_export||false;
+  const tStartVal=n.time_start||formatTime(b.start);
+  const tEndVal=n.time_end||formatTime(b.end);
   html+='<div class="card-top">';
-  html+='<div class="time-col" onclick="toggleNotes(\''+sid+'\',\''+esc(b.id)+'\')"><div class="time-big">'+formatTime(b.start)+'</div><div class="time-end">'+formatTime(b.end)+'</div></div>';
+  html+='<div class="time-col" onclick="toggleNotes(\''+sid+'\',\''+esc(b.id)+'\')">'
+    +'<input type="time" class="time-edit" value="'+esc(tStartVal)+'" onclick="event.stopPropagation()" onchange="saveTimeOverride(\''+sid+'\',\''+esc(b.id)+'\',\'start\',this.value)"/>'
+    +'<input type="time" class="time-edit time-edit-end" value="'+esc(tEndVal)+'" onclick="event.stopPropagation()" onchange="saveTimeOverride(\''+sid+'\',\''+esc(b.id)+'\',\'end\',this.value)"/>'
+    +'</div>';
   html+='<div class="divider-v"></div>';
   html+='<div class="info-col" onclick="toggleNotes(\''+sid+'\',\''+esc(b.id)+'\')">';
-  html+='<div class="booking-title">'+esc(b.title)+(isReady?'<span class="ready-badge">&#10003; LISTO</span>':'')+'</div>';
+  html+='<div class="booking-title">'+esc(b.title)+(isReady?'<span class="ready-badge">&#10003; LISTO</span>':'')+(noExport?'<span class="no-export-badge">🚫 No exportar</span>':'')+'</div>';
   const planClientName=n.client_name||p.buyer||'';
   html+='<div class="booking-buyer client-name-row">&#129489; <input class="client-name-input" id="clientname-'+sid+'" value="'+esc(planClientName)+'" placeholder="Nombre cliente" oninput="onClientNameInput(\''+sid+'\')" onblur="onClientNameBlur(\''+sid+'\')" onclick="event.stopPropagation()"/><button class="btn-phone-save" id="clientnamesave-'+sid+'" onclick="saveClientName(\''+sid+'\',\''+esc(b.id)+'\');event.stopPropagation()">Guardar</button></div>';
   if(p.email)html+='<div class="booking-email">&#9993; '+esc(p.email)+'</div>';
@@ -963,7 +976,8 @@ function renderCard(b){
     html+='<a href="https://wa.me/'+waNum+'" target="_blank"><button class="btn-sm btn-wa">&#128172; WhatsApp</button></a>';
     html+='<button class="btn-sm" style="background:#dcfce7;color:#16a34a;border:1px solid #16a34a" onclick="openWaTemplate(\''+esc(b.id)+'\',event)">&#128172; Reminder</button>';
   }
-  html+='<button class="btn-sm btn-notes" onclick="toggleNotes(\''+sid+'\',\''+esc(b.id)+'\')">&#128221; '+(allNotes[b.id]?'Notas':'Notas')+'</button>';
+  html+='<button class="btn-sm btn-notes" onclick="toggleNotes(\''+sid+'\',\''+esc(b.id)+'\')">&#128221; Notas</button>';
+  html+='<button class="btn-sm '+(noExport?'btn-no-export-on':'btn-no-export')+'" id="noexport-'+sid+'" onclick="toggleNoExport(\''+sid+'\',\''+esc(b.id)+'\')">'+(noExport?'🚫 No exportar':'📤 Exportar')+'</button>';
   html+='</div>';
 
   // Notes panel
@@ -1002,7 +1016,14 @@ function renderCard(b){
 }
 
 // ── Interactions ──────────────────────────────────────────────────────────────
-function setSearch(q){searchQuery=q;renderTomorrow();renderWeek();}
+function setSearch(q){
+  searchQuery=q;
+  renderTomorrow();
+  renderWeek();
+  // Restore focus to the visible search input after re-render
+  const inp=[...document.querySelectorAll('.search-input')].find(el=>el.offsetParent!==null);
+  if(inp){inp.focus();inp.setSelectionRange(q.length,q.length);}
+}
 function toggleCompact(){isCompact=!isCompact;renderToday();renderTomorrow();renderWeek();}
 
 function openWaTemplate(eventId,ev){
@@ -1105,6 +1126,32 @@ async function saveNotes(sid,eventId){
   }catch(err){btn.textContent='Error';btn.disabled=false;if(st)st.textContent='Error: '+err.message;}
 }
 function copyText(text,btn){navigator.clipboard.writeText(text).then(()=>{btn.textContent='Copiado';btn.classList.add('done');setTimeout(()=>{btn.textContent='Copiar';btn.classList.remove('done');},2000);});}
+
+async function saveTimeOverride(sid,eventId,field,value){
+  const key=field==='start'?'time_start':'time_end';
+  const existing=allNotes[eventId]||{};
+  const updated={...existing,[key]:value};
+  try{await upsertNote(eventId,updated);allNotes[eventId]={...updated,event_id:eventId};}
+  catch(err){console.error('Error guardando hora:',err);}
+}
+
+async function toggleNoExport(sid,eventId){
+  const existing=allNotes[eventId]||{};
+  const newVal=!existing.no_export;
+  const updated={...existing,no_export:newVal};
+  try{
+    await upsertNote(eventId,updated);
+    allNotes[eventId]={...updated,event_id:eventId};
+    const btn=document.getElementById('noexport-'+sid);
+    if(btn){btn.textContent=newVal?'🚫 No exportar':'📤 Exportar';btn.className='btn-sm '+(newVal?'btn-no-export-on':'btn-no-export');}
+    const title=document.querySelector('#card-'+sid+' .booking-title');
+    if(title){
+      const existing2=title.querySelector('.no-export-badge');
+      if(newVal&&!existing2)title.insertAdjacentHTML('beforeend','<span class="no-export-badge">🚫 No exportar</span>');
+      if(!newVal&&existing2)existing2.remove();
+    }
+  }catch(err){console.error('Error toggling no_export:',err);}
+}
 
 // ── History tab (with calendar picker) ─────────────────────────────────────────
 let historyDate=new Date();
@@ -1589,10 +1636,11 @@ function showExport(which){
   text+=sep+'\n\n';
   for(let i=0;i<dayBookings.length;i++){
     const b=dayBookings[i],n=allNotes[b.id]||{},p=b.parsed;
+    if(n.no_export)continue;
     const phone=n.phone||p.phone||'';
     const flag=getFlag(phone);
-    const timeStart=formatTime(b.start);
-    const timeEnd=formatTime(b.end);
+    const timeStart=n.time_start||formatTime(b.start);
+    const timeEnd=n.time_end||formatTime(b.end);
     const boat=n.boat||'--';
     const pax=parseInt(n.pax||p.pax)||0;
     const balance=n.balance?n.balance+'€':'';
@@ -2217,6 +2265,8 @@ function showApp(admin){
     rb.textContent=a?'Admin':'User';
     rb.className='role-badge '+(a?'role-badge-admin':'role-badge-user');
     rb.style.display='inline-block';
+    rb.onclick=a?null:()=>{window.location.href=window.location.pathname;};
+    rb.title=a?'':'Toca para acceder como admin';
   }
   if(isContratosOnly){
     document.getElementById('tabBar').style.display='flex';
