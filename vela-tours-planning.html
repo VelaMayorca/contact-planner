@@ -403,11 +403,10 @@
 <div class="modal-overlay wa-template-modal" id="waTemplateModal" style="display:none" onclick="if(event.target===this)closeWaTemplate()">
   <div class="modal">
     <h2>&#128172; Mensaje de WhatsApp</h2>
-    <div class="template-vars">Variables: <code>{nombre}</code> <code>{hora}</code> <code>{barco}</code> <code>{pax}</code> <code>{patron}</code></div>
+    <div id="waLangDetected" style="font-size:0.78rem;font-weight:600;color:var(--blue);margin-bottom:8px;"></div>
     <textarea class="template-area" id="waTemplateText"></textarea>
     <div style="margin-top:12px;display:flex;gap:8px;justify-content:flex-end">
       <button class="btn" style="background:var(--border);color:var(--text)" onclick="closeWaTemplate()">Cancelar</button>
-      <button class="btn btn-blue" onclick="saveWaTemplate()">Guardar plantilla</button>
       <a id="waTemplateSendLink" href="#" target="_blank"><button class="btn btn-wa" style="background:#25d366;color:#fff">&#128172; Abrir WhatsApp</button></a>
     </div>
   </div>
@@ -622,7 +621,39 @@ async function loadFromSupabase(){
 let allBookings=[],allNotes={};
 let searchQuery='';
 let isCompact=false;
-const DEFAULT_WA_TEMPLATE='Hola {nombre}! Te escribimos desde Vela Tours para confirmar tu reserva de manana a las {hora} en el {barco} para {pax} personas. Tu patron sera {patron}. Cualquier duda estamos aqui!';
+const WA_TEMPLATES={
+  en:`Hi {nombre}!! You have a booking with us tomorrow at {hora} on the {barco} ⛵⛵
+
+How many people are you?
+
+Do you want to add food and drinks to the tour? We offer food (Tapas or Paella) and unlimited alcoholic drinks (beer/wine/cava) for 30€/person.`,
+  es:`¡Hola {nombre}!! Tienes una reserva con nosotros mañana a las {hora} en el {barco} ⛵⛵
+
+¿Cuántas personas vendréis?
+
+¿Queréis añadir comida y bebida al tour? Ofrecemos comida (Tapas o Paella) y bebidas alcohólicas ilimitadas (cerveza/vino/cava) por 30€/persona.`,
+  de:`Hallo {nombre}!! Ihr habt morgen eine Buchung bei uns um {hora} auf der {barco} ⛵⛵
+
+Wie viele Personen seid ihr?
+
+Möchtet ihr Essen und Getränke zur Tour hinzufügen? Wir bieten Essen (Tapas oder Paella) und unbegrenzte alkoholische Getränke (Bier/Wein/Cava) für 30€/Person an.`,
+};
+const CC_SPANISH=['+34','+54','+52','+56','+57','+58','+591','+593','+595','+502','+503','+504','+505','+506','+507','+51','+53'];
+const CC_GERMAN=['+49','+43'];
+function detectLang(phone){
+  if(!phone)return'en';
+  const n=phone.replace(/[^0-9+]/g,'');
+  let cc=null;
+  if(n.startsWith('+')||n.startsWith('00')){
+    const raw=n.startsWith('+')?n.slice(1):n.slice(2);
+    for(const len of[3,2,1]){const c='+'+raw.slice(0,len);const e=CDB.find(x=>x.cc===c);if(e){cc=c;break;}}
+  }else{const g=guessPrefix(phone);if(g)cc=g.cc;}
+  if(!cc)return'en';
+  if(CC_SPANISH.includes(cc))return'es';
+  if(CC_GERMAN.includes(cc))return'de';
+  return'en';
+}
+const DEFAULT_WA_TEMPLATE=WA_TEMPLATES.en;
 let activeBoatFilter='all', activeSkipperFilter='all';
 
 
@@ -1032,14 +1063,18 @@ function openWaTemplate(eventId,ev){
   const n=allNotes[eventId]||{};
   const phone=n.phone||b.parsed?.phone||'';
   const waNum=phone?buildWa(phone):'';
-  const tmpl=localStorage.getItem('vt_wa_template')||DEFAULT_WA_TEMPLATE;
-  const nombre=(b.parsed?.buyer||'').split(' ')[0]||'cliente';
-  const hora=formatTime(b.start);
+  const lang=detectLang(phone);
+  const tmpl=WA_TEMPLATES[lang]||WA_TEMPLATES.en;
+  const nombre=(n.client_name||b.parsed?.buyer||'').split(' ')[0]||'cliente';
+  const hora=localStorage.getItem('vt_time_start_'+eventId)||formatTime(b.start);
   const barco=n.boat||'--';
   const pax=n.pax||b.parsed?.pax||'--';
   const patron=n.skipper||'--';
   const msg=tmpl.replace(/{nombre}/g,nombre).replace(/{hora}/g,hora).replace(/{barco}/g,barco).replace(/{pax}/g,pax).replace(/{patron}/g,patron);
-  document.getElementById('waTemplateText').value=tmpl;
+  const LANG_LABELS={es:'🇪🇸 Español',en:'🇬🇧 English',de:'🇩🇪 Deutsch'};
+  const langEl=document.getElementById('waLangDetected');
+  if(langEl)langEl.textContent='Idioma detectado: '+( LANG_LABELS[lang]||lang);
+  document.getElementById('waTemplateText').value=msg;
   const link=document.getElementById('waTemplateSendLink');
   link.href='https://wa.me/'+waNum+'?text='+encodeURIComponent(msg);
   document.getElementById('waTemplateModal').style.display='flex';
