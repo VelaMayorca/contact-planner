@@ -924,9 +924,9 @@ function renderCard(b){
   const isReminder=n.contacted==='reminder';
   const cardBg=isReminder?' is-ready':isContacted?' is-contacted':'';
   let html='<div class="booking-card'+cardBg+'" id="card-'+sid+'">';
-  const noExport=n.no_export||false;
-  const tStartVal=n.time_start||formatTime(b.start);
-  const tEndVal=n.time_end||formatTime(b.end);
+  const noExport=localStorage.getItem('vt_no_export_'+b.id)==='true';
+  const tStartVal=localStorage.getItem('vt_time_start_'+b.id)||formatTime(b.start);
+  const tEndVal=localStorage.getItem('vt_time_end_'+b.id)||formatTime(b.end);
   html+='<div class="card-top">';
   html+='<div class="time-col" onclick="toggleNotes(\''+sid+'\',\''+esc(b.id)+'\')">'
     +'<input type="time" class="time-edit" value="'+esc(tStartVal)+'" onclick="event.stopPropagation()" onchange="saveTimeOverride(\''+sid+'\',\''+esc(b.id)+'\',\'start\',this.value)"/>'
@@ -1127,30 +1127,23 @@ async function saveNotes(sid,eventId){
 }
 function copyText(text,btn){navigator.clipboard.writeText(text).then(()=>{btn.textContent='Copiado';btn.classList.add('done');setTimeout(()=>{btn.textContent='Copiar';btn.classList.remove('done');},2000);});}
 
-async function saveTimeOverride(sid,eventId,field,value){
-  const key=field==='start'?'time_start':'time_end';
-  const existing=allNotes[eventId]||{};
-  const updated={...existing,[key]:value};
-  try{await upsertNote(eventId,updated);allNotes[eventId]={...updated,event_id:eventId};}
-  catch(err){console.error('Error guardando hora:',err);}
+function saveTimeOverride(sid,eventId,field,value){
+  localStorage.setItem('vt_time_'+field+'_'+eventId, value);
 }
 
-async function toggleNoExport(sid,eventId){
-  const existing=allNotes[eventId]||{};
-  const newVal=!existing.no_export;
-  const updated={...existing,no_export:newVal};
-  try{
-    await upsertNote(eventId,updated);
-    allNotes[eventId]={...updated,event_id:eventId};
-    const btn=document.getElementById('noexport-'+sid);
-    if(btn){btn.textContent=newVal?'🚫 No exportar':'📤 Exportar';btn.className='btn-sm '+(newVal?'btn-no-export-on':'btn-no-export');}
-    const title=document.querySelector('#card-'+sid+' .booking-title');
-    if(title){
-      const existing2=title.querySelector('.no-export-badge');
-      if(newVal&&!existing2)title.insertAdjacentHTML('beforeend','<span class="no-export-badge">🚫 No exportar</span>');
-      if(!newVal&&existing2)existing2.remove();
-    }
-  }catch(err){console.error('Error toggling no_export:',err);}
+function toggleNoExport(sid,eventId){
+  const key='vt_no_export_'+eventId;
+  const newVal=localStorage.getItem(key)!=='true';
+  if(newVal)localStorage.setItem(key,'true');
+  else localStorage.removeItem(key);
+  const btn=document.getElementById('noexport-'+sid);
+  if(btn){btn.textContent=newVal?'🚫 No exportar':'📤 Exportar';btn.className='btn-sm '+(newVal?'btn-no-export-on':'btn-no-export');}
+  const title=document.querySelector('#card-'+sid+' .booking-title');
+  if(title){
+    const badge=title.querySelector('.no-export-badge');
+    if(newVal&&!badge)title.insertAdjacentHTML('beforeend','<span class="no-export-badge">🚫 No exportar</span>');
+    if(!newVal&&badge)badge.remove();
+  }
 }
 
 // ── History tab (with calendar picker) ─────────────────────────────────────────
@@ -1636,11 +1629,11 @@ function showExport(which){
   text+=sep+'\n\n';
   for(let i=0;i<dayBookings.length;i++){
     const b=dayBookings[i],n=allNotes[b.id]||{},p=b.parsed;
-    if(n.no_export)continue;
+    if(localStorage.getItem('vt_no_export_'+b.id)==='true')continue;
     const phone=n.phone||p.phone||'';
     const flag=getFlag(phone);
-    const timeStart=n.time_start||formatTime(b.start);
-    const timeEnd=n.time_end||formatTime(b.end);
+    const timeStart=localStorage.getItem('vt_time_start_'+b.id)||formatTime(b.start);
+    const timeEnd=localStorage.getItem('vt_time_end_'+b.id)||formatTime(b.end);
     const boat=n.boat||'--';
     const pax=parseInt(n.pax||p.pax)||0;
     const balance=n.balance?n.balance+'€':'';
