@@ -1070,7 +1070,10 @@ function openWaTemplate(eventId,ev){
   const barco=n.boat||'--';
   const pax=n.pax||b.parsed?.pax||'--';
   const patron=n.skipper||'--';
-  const msg=tmpl.replace(/{nombre}/g,nombre).replace(/{hora}/g,hora).replace(/{barco}/g,barco).replace(/{pax}/g,pax).replace(/{patron}/g,patron);
+  let msg=tmpl.replace(/{nombre}/g,nombre).replace(/{hora}/g,hora).replace(/{pax}/g,pax).replace(/{patron}/g,patron);
+  if(barco&&barco!=='--'){msg=msg.replace(/{barco}/g,barco);}
+  else{msg=msg.replace(/\s*on the \{barco\}/g,'').replace(/\s*en el \{barco\}/g,'').replace(/\s*auf der \{barco\}/g,'');}
+
   const LANG_LABELS={es:'🇪🇸 Español',en:'🇬🇧 English',de:'🇩🇪 Deutsch'};
   const langEl=document.getElementById('waLangDetected');
   if(langEl)langEl.textContent='Idioma detectado: '+( LANG_LABELS[lang]||lang);
