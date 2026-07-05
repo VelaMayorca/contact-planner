@@ -188,9 +188,16 @@
   .arreglo-date{font-size:0.7rem;color:var(--muted);margin-top:2px;}
   .arreglo-del{background:none;border:none;cursor:pointer;color:var(--muted);font-size:0.85rem;padding:4px 8px;border-radius:6px;transition:background 0.15s,color 0.15s;white-space:nowrap;}
   .arreglo-del:hover{background:#fee2e2;color:var(--danger);}
-  .arreglo-add{display:flex;gap:8px;margin-top:12px;padding-top:12px;border-top:1px dashed var(--border);}
-  .arreglo-add input{flex:1;font-family:'Inter',sans-serif;font-size:0.85rem;padding:8px 12px;border:1.5px solid var(--border);border-radius:8px;color:var(--text);outline:none;}
-  .arreglo-add input:focus{border-color:var(--blue);}
+  .arreglo-add{display:flex;gap:8px;margin-top:12px;padding-top:12px;border-top:1px dashed var(--border);flex-wrap:wrap;}
+  .arreglo-add input[type=text]{flex:1;min-width:120px;font-family:'Inter',sans-serif;font-size:0.85rem;padding:8px 12px;border:1.5px solid var(--border);border-radius:8px;color:var(--text);outline:none;}
+  .arreglo-add input[type=text]:focus{border-color:var(--blue);}
+  .btn-camera{background:#f1f5f9;border:1.5px solid var(--border);border-radius:8px;padding:7px 10px;font-size:1rem;cursor:pointer;flex-shrink:0;}
+  .btn-camera:hover{background:#e2e8f0;}
+  .arreglo-foto-preview{display:flex;align-items:center;gap:8px;margin-top:8px;padding:6px 10px;background:#f8fafc;border-radius:8px;border:1.5px solid var(--border);}
+  .arreglo-foto-preview img{height:56px;width:56px;object-fit:cover;border-radius:6px;cursor:pointer;}
+  .arreglo-thumb{height:52px;width:52px;object-fit:cover;border-radius:6px;cursor:pointer;border:1.5px solid var(--border);flex-shrink:0;}
+  .foto-modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;}
+  .foto-modal-overlay img{max-width:100%;max-height:90vh;border-radius:12px;}
   /* Stats tab */
   .stats-controls{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:20px;background:var(--white);border:1.5px solid var(--border);border-radius:12px;padding:14px 18px;}
   .stats-controls label{font-size:0.78rem;font-weight:600;color:var(--muted);}
@@ -398,6 +405,11 @@
     <div id="view-contratos" style="display:none"></div>
   </div>
 </main>
+
+<!-- Foto lightbox -->
+<div class="foto-modal-overlay" id="fotoModal" style="display:none" onclick="closeFotoModal()">
+  <img id="fotoModalImg" src="" alt="Foto arreglo"/>
+</div>
 
 <!-- WA Template Modal -->
 <div class="modal-overlay wa-template-modal" id="waTemplateModal" style="display:none" onclick="if(event.target===this)closeWaTemplate()">
@@ -1720,6 +1732,49 @@ function copyExport(){
 
 // ── Arreglos tab ──────────────────────────────────────────────────────────────
 let allArreglos=[];
+const _arrFotos={};  // pending foto base64 per boat key
+
+function compressImage(file,maxPx=1200,quality=0.82){
+  return new Promise(resolve=>{
+    const reader=new FileReader();
+    reader.onload=e=>{
+      const img=new Image();
+      img.onload=()=>{
+        let w=img.width,h=img.height;
+        if(w>maxPx||h>maxPx){if(w>h){h=Math.round(h*maxPx/w);w=maxPx;}else{w=Math.round(w*maxPx/h);h=maxPx;}}
+        const canvas=document.createElement('canvas');
+        canvas.width=w;canvas.height=h;
+        canvas.getContext('2d').drawImage(img,0,0,w,h);
+        resolve(canvas.toDataURL('image/jpeg',quality));
+      };
+      img.src=e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+async function onArregloFotoSelected(boat,input){
+  const file=input.files[0];if(!file)return;
+  const b64=await compressImage(file);
+  _arrFotos[boat]=b64;
+  const prev=document.getElementById('arr-foto-preview-'+boat);
+  const img=document.getElementById('arr-foto-img-'+boat);
+  if(prev&&img){img.src=b64;prev.style.display='flex';}
+}
+
+function clearArregloFoto(boat){
+  delete _arrFotos[boat];
+  const prev=document.getElementById('arr-foto-preview-'+boat);
+  const inp=document.getElementById('arr-foto-input-'+boat);
+  if(prev)prev.style.display='none';
+  if(inp)inp.value='';
+}
+
+function openFotoModal(src){
+  document.getElementById('fotoModalImg').src=src;
+  document.getElementById('fotoModal').style.display='flex';
+}
+function closeFotoModal(){document.getElementById('fotoModal').style.display='none';}
 
 async function loadArreglos(){
   const{data,error}=await sb.from('arreglos').select('*').order('created_at');
@@ -1735,9 +1790,12 @@ async function addArreglo(boat){
   inputEl.dataset.adding='1';
   inputEl.disabled=true;
   try{
-    const{data,error}=await sb.from('arreglos').insert({barco:boat,descripcion:text}).select().single();
+    const row={barco:boat,descripcion:text};
+    if(_arrFotos[boat])row.foto=_arrFotos[boat];
+    const{data,error}=await sb.from('arreglos').insert(row).select().single();
     if(error)throw error;
     inputEl.value='';
+    clearArregloFoto(boat);
     renderArreglos();
   }catch(err){alert('Error al añadir: '+err.message);}
   finally{inputEl.disabled=false;delete inputEl.dataset.adding;}
@@ -1785,6 +1843,7 @@ async function renderArreglos(){
         const d=new Date(item.created_at);
         const dateStr=d.toLocaleDateString('es-ES',{day:'numeric',month:'short'})+' '+d.toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'});
         html+='<div class="arreglo-item">';
+        if(item.foto)html+='<img class="arreglo-thumb" src="'+item.foto+'" onclick="openFotoModal(\''+item.foto+'\')" title="Ver foto"/>';
         html+='<div style="flex:1"><div class="arreglo-text">'+esc(item.descripcion)+'</div><div class="arreglo-date">'+dateStr+'</div></div>';
         html+='<button class="arreglo-del" onclick="deleteArreglo(\''+item.id+'\')" title="Marcar como realizado">&#10003; Hecho</button>';
         html+='</div>';
@@ -1792,7 +1851,17 @@ async function renderArreglos(){
     }else{
       html+='<p style="font-size:0.85rem;color:var(--muted);margin:4px 0 10px">Sin arreglos pendientes &#10003;</p>';
     }
-    html+='<div class="arreglo-add"><input id="arr-input-'+esc(boat)+'" type="text" placeholder="Describir arreglo necesario..." onkeydown="if(event.key===\'Enter\')addArreglo(\''+esc(boat)+'\')"/><button class="btn btn-blue" onclick="addArreglo(\''+esc(boat)+'\')">+ A&ntilde;adir</button></div>';
+    html+='<div class="arreglo-add">'
+      +'<input id="arr-input-'+esc(boat)+'" type="text" placeholder="Describir arreglo necesario..." onkeydown="if(event.key===\'Enter\')addArreglo(\''+esc(boat)+'\')"/>'
+      +'<input type="file" accept="image/*" capture="environment" id="arr-foto-input-'+esc(boat)+'" style="display:none" onchange="onArregloFotoSelected(\''+esc(boat)+'\',this)"/>'
+      +'<button class="btn-camera" onclick="document.getElementById(\'arr-foto-input-'+esc(boat)+'\').click()" title="Añadir foto">📷</button>'
+      +'<button class="btn btn-blue" onclick="addArreglo(\''+esc(boat)+'\')">+ A&ntilde;adir</button>'
+      +'</div>'
+      +'<div class="arreglo-foto-preview" id="arr-foto-preview-'+esc(boat)+'" style="display:none">'
+      +'<img id="arr-foto-img-'+esc(boat)+'" src="" style="height:56px;width:56px;object-fit:cover;border-radius:6px;cursor:pointer" onclick="openFotoModal(this.src)"/>'
+      +'<span style="font-size:0.8rem;color:var(--muted);flex:1">Foto adjunta</span>'
+      +'<button onclick="clearArregloFoto(\''+esc(boat)+'\')" style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:1rem">✕</button>'
+      +'</div>';
     html+='</div>';
   }
 
