@@ -465,6 +465,7 @@ const isAdmin=urlParams.get('admin')===ADMIN_KEY||localStorage.getItem('vt_admin
 if(urlParams.get('admin')===ADMIN_KEY){localStorage.setItem('vt_admin',ADMIN_KEY);}
 const isPaymentsOnly=urlParams.get('view')==='pagos';
 const isContratosOnly=urlParams.get('view')==='contratos';
+const isMañanaOnly=urlParams.get('view')==='manana';
 
 const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 
@@ -2368,7 +2369,13 @@ function showApp(admin){
     rb.onclick=a?null:()=>{window.location.href=window.location.pathname;};
     rb.title=a?'':'Toca para acceder como admin';
   }
-  if(isContratosOnly){
+  if(isMañanaOnly){
+    document.getElementById('tabBar').style.display='none';
+    ['today','week','calendar','history','payments','stats','arreglos','compras','contratos'].forEach(t=>{
+      const el=document.getElementById('tab-'+t);if(el)el.style.display='none';
+    });
+    document.getElementById('btnRefresh').style.display='inline-flex';
+  }else if(isContratosOnly){
     document.getElementById('tabBar').style.display='flex';
     ['today','tomorrow','week','calendar','history','payments','stats','arreglos','compras'].forEach(t=>{
       const el=document.getElementById('tab-'+t);if(el)el.style.display='none';
@@ -2411,7 +2418,7 @@ updateSyncInfo();
 (async function init(){
   const params=new URLSearchParams(window.location.search);
   const code=params.get('code'),error=params.get('error');
-  if(isAdmin && !isContratosOnly && !isPaymentsOnly){
+  if(isAdmin && !isContratosOnly && !isPaymentsOnly && !isMañanaOnly){
     if(error){showLogin();alert('Error Google: '+error);return;}
     if(code){await handleCallback(code);return;}
     if(loadToken()){showApp(true);await syncCalendar();startAutoSync();}
@@ -2419,7 +2426,10 @@ updateSyncInfo();
   }else{
     showApp(false);
     await loadFromSupabase();
-    if(isPaymentsOnly){
+    if(isMañanaOnly){
+      document.getElementById('view-tomorrow').style.display='block';
+      renderTomorrow();
+    }else if(isPaymentsOnly){
       document.getElementById('view-payments').style.display='block';
       document.getElementById('tab-payments').classList.add('active');
       renderPayments();
@@ -2430,7 +2440,7 @@ updateSyncInfo();
       document.getElementById('view-contratos').style.display='block';
       _contractDateStr=toDateStr(new Date());
       renderContratos();
-    }else if(!isPaymentsOnly){
+    }else if(!isPaymentsOnly&&!isMañanaOnly){
       // Default non-admin view: Tours
       document.getElementById('view-payments').style.display='block';
       renderPayments();
