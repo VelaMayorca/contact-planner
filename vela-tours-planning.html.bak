@@ -1,0 +1,1568 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vela Mayorca Planning App</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect x='3' y='4' width='18' height='17' rx='2' fill='%232d7db3'/%3E%3Crect x='3' y='4' width='18' height='5' rx='2' fill='%2308213a'/%3E%3Cline x1='7' y1='2' x2='7' y2='6' stroke='%2308213a' stroke-width='2' stroke-linecap='round'/%3E%3Cline x1='17' y1='2' x2='17' y2='6' stroke='%2308213a' stroke-width='2' stroke-linecap='round'/%3E%3Crect x='6' y='11' width='3' height='3' fill='%234abfb0'/%3E%3Crect x='10.5' y='11' width='3' height='3' fill='%23faf7f2'/%3E%3Crect x='15' y='11' width='3' height='3' fill='%234abfb0'/%3E%3Crect x='6' y='15' width='3' height='3' fill='%23faf7f2'/%3E%3Crect x='10.5' y='15' width='3' height='3' fill='%234abfb0'/%3E%3C/svg%3E">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Inter:wght@400;500;600;700&display=swap');
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+  :root{--deep:#08213a;--mid:#1a4a6b;--blue:#2d7db3;--teal:#4abfb0;--sand:#faf7f2;--white:#ffffff;--text:#0a2540;--muted:#5a7a94;--border:#d8e8f2;--success:#22a06b;--warn:#e68a00;--danger:#d93025;}
+  body{font-family:'Inter',sans-serif;background:var(--sand);color:var(--text);min-height:100vh;}
+  header{background:var(--deep);padding:0 18px;display:flex;align-items:center;justify-content:space-between;height:58px;position:sticky;top:0;z-index:100;box-shadow:0 2px 12px rgba(0,0,0,0.25);}
+  .logo{font-family:'DM Serif Display',serif;font-size:1.25rem;color:var(--white);display:flex;align-items:center;gap:8px;}
+  .logo span{color:var(--teal);}
+  .header-right{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+  .sync-info{font-size:0.7rem;color:var(--muted);white-space:nowrap;}
+  .today-badge{font-size:0.75rem;font-weight:600;color:var(--teal);border:1.5px solid var(--teal);border-radius:20px;padding:3px 10px;}
+  .btn{border:none;border-radius:8px;padding:7px 14px;font-family:'Inter',sans-serif;font-size:0.8rem;font-weight:600;cursor:pointer;transition:opacity 0.2s;display:inline-flex;align-items:center;gap:5px;}
+  .btn:hover{opacity:0.85;}.btn:disabled{opacity:0.5;pointer-events:none;}
+  .btn-blue{background:var(--blue);color:#fff;}.btn-deep{background:var(--deep);color:#fff;}.btn-danger{background:var(--danger);color:#fff;}.btn-teal{background:var(--teal);color:#fff;}
+  /* Tabs */
+  .tabs{background:var(--white);border-bottom:2px solid var(--border);display:flex;padding:0 18px;overflow-x:auto;}
+  .tab{padding:12px 16px;font-size:0.82rem;font-weight:600;color:var(--muted);cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-2px;transition:color 0.15s,border-color 0.15s;white-space:nowrap;}
+  .tab.active{color:var(--blue);border-bottom-color:var(--blue);}.tab:hover:not(.active){color:var(--text);}
+  main{padding:20px 18px;max-width:960px;margin:0 auto;}
+  /* Filters */
+  .filter-bar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px;align-items:center;}
+  .search-bar{display:flex;gap:8px;margin-bottom:12px;}
+  .search-input{flex:1;font-family:'Inter',sans-serif;font-size:0.88rem;padding:9px 14px;border:1.5px solid var(--border);border-radius:10px;outline:none;color:var(--text);}
+  .search-input:focus{border-color:var(--blue);}
+  .filter-label{font-size:0.75rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.05em;}
+  .filter-chip{border:1.5px solid var(--border);background:var(--white);color:var(--muted);border-radius:20px;padding:5px 12px;font-size:0.78rem;font-weight:600;cursor:pointer;transition:all 0.15s;font-family:'Inter',sans-serif;}
+  .filter-chip.active{background:var(--blue);color:#fff;border-color:var(--blue);}
+  .filter-chip:hover:not(.active){border-color:var(--blue);color:var(--blue);}
+  /* Skipper filter */
+  .skipper-select{border:1.5px solid var(--border);background:var(--white);color:var(--text);border-radius:20px;padding:5px 12px;font-size:0.78rem;font-weight:600;cursor:pointer;font-family:'Inter',sans-serif;outline:none;}
+  /* Login */
+  #loginScreen{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:70vh;text-align:center;gap:20px;}
+  .login-icon{font-size:3rem;}.login-title{font-family:'DM Serif Display',serif;font-size:1.8rem;color:var(--text);}
+  .login-sub{color:var(--muted);font-size:0.9rem;max-width:360px;line-height:1.6;}
+  .btn-google{background:#fff;color:#3c4043;border:2px solid var(--border);border-radius:10px;padding:12px 24px;font-size:0.95rem;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:10px;box-shadow:0 2px 8px rgba(0,0,0,0.08);transition:box-shadow 0.2s;}
+  .btn-google:hover{box-shadow:0 4px 16px rgba(0,0,0,0.15);}
+  /* States */
+  .state-screen{text-align:center;padding:60px 20px;color:var(--muted);}
+  .state-screen .icon{font-size:2.5rem;margin-bottom:14px;}
+  .state-screen h2{font-family:'DM Serif Display',serif;font-size:1.3rem;color:var(--text);margin-bottom:8px;}
+  .state-screen p{font-size:0.88rem;line-height:1.6;}
+  @keyframes spin{to{transform:rotate(360deg);}}.spinning{display:inline-block;animation:spin 1s linear infinite;}
+  /* Summary */
+  .top-bar{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px;}
+  .summary-bar{background:var(--white);border:1.5px solid var(--border);border-radius:12px;padding:12px 18px;display:flex;gap:20px;flex-wrap:wrap;box-shadow:0 2px 8px rgba(10,33,64,0.07);}
+  .sum-item{text-align:center;}.sum-num{font-family:'DM Serif Display',serif;font-size:1.5rem;color:var(--blue);line-height:1;}
+  .sum-label{font-size:0.68rem;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:0.05em;margin-top:3px;}
+  .sum-balance{color:var(--success);}
+  /* Admin bar */
+  .admin-bar{background:linear-gradient(135deg,var(--deep),var(--mid));color:#fff;padding:10px 16px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;border-radius:12px;margin-bottom:16px;font-size:0.8rem;}
+  .admin-bar strong{color:var(--teal);}
+  /* New notes badge */
+  .new-badge{background:var(--danger);color:#fff;font-size:0.65rem;font-weight:700;border-radius:10px;padding:2px 6px;margin-left:4px;vertical-align:middle;}
+  /* Day section */
+  .day-section{margin-bottom:28px;}
+  .day-header{display:flex;align-items:center;gap:12px;margin-bottom:12px;}
+  .day-label{font-family:'DM Serif Display',serif;font-size:1.1rem;color:var(--text);}
+  .day-label .weekday{color:var(--muted);font-size:0.88rem;font-family:'Inter',sans-serif;font-weight:500;margin-left:6px;}
+  .day-count{font-size:0.72rem;font-weight:700;background:var(--teal);color:#fff;border-radius:12px;padding:2px 8px;}
+  /* Cards */
+  .booking-card{background:var(--white);border:1.5px solid var(--border);border-radius:14px;margin-bottom:12px;overflow:hidden;box-shadow:0 2px 12px rgba(10,33,64,0.07);transition:border-color 0.2s;}
+  .compact .booking-card{margin-bottom:6px;border-radius:10px;}
+  .compact .card-top{padding:9px 14px;}
+  .compact .booking-buyer,.compact .booking-email,.compact .phone-row,.compact .card-actions,.compact .notes-summary{display:none!important;}
+  .compact .booking-title{font-size:0.88rem;}
+  .compact .time-big{font-size:1rem;}
+  .booking-card:hover{border-color:var(--blue);}
+
+  .card-top{padding:14px 18px;display:flex;align-items:flex-start;gap:12px;}
+  .time-col{flex-shrink:0;text-align:center;min-width:48px;cursor:pointer;}
+  .time-big{font-family:'DM Serif Display',serif;font-size:1.2rem;color:var(--blue);line-height:1;}
+  .time-end{font-size:0.68rem;color:var(--muted);margin-top:2px;}
+  .divider-v{width:1px;background:var(--border);align-self:stretch;flex-shrink:0;}
+  .info-col{flex:1;min-width:0;cursor:pointer;}
+  .booking-title{font-weight:700;font-size:0.95rem;color:var(--text);margin-bottom:3px;}
+  .booking-buyer{font-size:0.85rem;color:var(--mid);font-weight:600;margin-bottom:2px;}
+  .booking-email{font-size:0.75rem;color:var(--muted);margin-bottom:5px;}
+  .booking-meta{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:6px;align-items:center;}
+  .meta-chip{font-size:0.72rem;font-weight:600;padding:2px 7px;border-radius:6px;display:flex;align-items:center;gap:3px;}
+  .chip-pax{background:#e8f4fd;color:var(--blue);}.chip-type{background:#f0faf9;color:#1a8a7a;}
+  .chip-boat{background:#fff3e0;color:#e65100;font-weight:700;}
+  .phone-row{display:flex;align-items:center;gap:8px;padding:0 18px 10px;flex-wrap:wrap;}
+  .phone-input{font-family:'DM Serif Display',serif;font-size:1rem;color:var(--mid);letter-spacing:0.03em;border:none;outline:none;background:transparent;width:190px;cursor:text;}
+  .phone-input:focus{border-bottom:2px solid var(--blue);background:#f0f8ff;border-radius:4px 4px 0 0;padding:2px 4px;}
+  .btn-phone-save{display:none;background:var(--success);color:#fff;border:none;border-radius:6px;padding:3px 8px;font-size:0.72rem;font-weight:600;cursor:pointer;}
+  .prefix-hint{font-size:0.72rem;color:var(--warn);display:block;margin-top:2px;}
+  .status-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;margin-top:4px;display:none;}
+  .dot-pending{background:var(--warn);}.dot-done{background:var(--success);}.dot-none{background:var(--border);}.dot-ready{background:#7c3aed;}
+  /* Ready card */
+  .booking-card.is-contacted{background:#f0fdf4!important;}
+  .booking-card.is-ready{border-color:#16a34a!important;background:#86efac!important;}
+  .booking-card.is-ready .time-big{color:#16a34a;}
+  .ready-badge{background:#7c3aed;color:#fff;font-size:0.68rem;font-weight:700;border-radius:10px;padding:2px 7px;margin-left:6px;vertical-align:middle;}
+  /* Progress ring */
+  .progress-wrap{display:flex;align-items:center;gap:16px;background:var(--white);border:1.5px solid var(--border);border-radius:14px;padding:14px 20px;margin-bottom:18px;box-shadow:0 2px 8px rgba(10,33,64,0.07);}
+  .progress-ring{position:relative;width:70px;height:70px;flex-shrink:0;}
+  .progress-ring svg{transform:rotate(-90deg);}
+  .progress-ring .ring-bg{fill:none;stroke:#e8f0fe;stroke-width:6;}
+  .progress-ring .ring-fill{fill:none;stroke-width:6;stroke-linecap:round;transition:stroke-dashoffset 0.5s ease;}
+  .progress-pct{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:'DM Serif Display',serif;font-size:1rem;font-weight:700;}
+  .progress-info{flex:1;}
+  .progress-title{font-weight:700;font-size:0.95rem;color:var(--text);margin-bottom:4px;}
+  .progress-sub{font-size:0.78rem;color:var(--muted);}
+  .btn-notify{background:#25d366;color:#fff;border:none;border-radius:8px;padding:8px 14px;font-family:'Inter',sans-serif;font-size:0.82rem;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:6px;}
+  .card-actions{padding:0 18px 12px;display:flex;gap:7px;flex-wrap:wrap;}
+  .notes-summary{padding:0 18px 10px;display:flex;flex-wrap:wrap;gap:6px;}
+  .note-pill{font-size:0.72rem;background:rgba(0,0,0,0.05);color:var(--muted);border-radius:20px;padding:3px 9px;display:flex;align-items:center;gap:4px;}
+  .note-pill strong{color:var(--text);font-weight:600;}
+  .btn-sm{border:none;border-radius:7px;padding:6px 11px;font-size:0.75rem;font-weight:600;font-family:'Inter',sans-serif;cursor:pointer;transition:opacity 0.15s,transform 0.1s;display:inline-flex;align-items:center;gap:4px;}
+  .btn-sm:active{transform:scale(0.95);}
+  .btn-copy{background:var(--border);color:var(--text);}.btn-copy.done{background:var(--success);color:#fff;}
+  .btn-wa{background:#25d366;color:#fff;font-weight:700;}.btn-notes{background:var(--sand);border:1.5px solid var(--border);color:var(--muted);}
+  .btn-export{background:var(--deep);color:#fff;}
+  /* Notes */
+  .notes-panel{border-top:1.5px solid var(--border);padding:14px 18px;background:#fafcff;display:none;}
+  .notes-panel.open{display:block;}
+  .notes-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;}
+  @media(max-width:600px){.notes-grid{grid-template-columns:1fr;}main{padding:12px;}}
+  .note-field label{display:block;font-size:0.7rem;font-weight:700;color:var(--muted);letter-spacing:0.06em;text-transform:uppercase;margin-bottom:4px;}
+  .note-field input,.note-field select,.note-field textarea{width:100%;font-family:'Inter',sans-serif;font-size:0.86rem;padding:7px 10px;border:1.5px solid var(--border);border-radius:8px;color:var(--text);background:#fff;outline:none;transition:border-color 0.2s;}
+  .note-field input:focus,.note-field select:focus,.note-field textarea:focus{border-color:var(--blue);}
+  .note-field textarea{resize:vertical;min-height:56px;}
+  .notes-footer{display:flex;gap:8px;justify-content:flex-end;align-items:center;}
+  .save-status{font-size:0.72rem;color:var(--muted);}
+  .btn-save{background:var(--blue);color:#fff;border:none;border-radius:8px;padding:7px 14px;font-family:'Inter',sans-serif;font-size:0.8rem;font-weight:600;cursor:pointer;}
+  .btn-save.saved{background:var(--success);}
+  /* Export modal */
+  .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:200;display:flex;align-items:center;justify-content:center;padding:20px;}
+  .wa-template-modal .template-area{width:100%;font-family:'Inter',sans-serif;font-size:0.88rem;padding:10px;border:1.5px solid var(--border);border-radius:8px;min-height:100px;resize:vertical;outline:none;}
+  .wa-template-modal .template-area:focus{border-color:var(--blue);}
+  .template-vars{font-size:0.75rem;color:var(--muted);margin:8px 0;line-height:1.8;}
+  .template-vars code{background:#f0f4f8;padding:1px 5px;border-radius:4px;font-family:monospace;}
+  .modal{background:var(--white);border-radius:16px;padding:24px;max-width:600px;width:100%;max-height:80vh;overflow-y:auto;box-shadow:0 8px 40px rgba(0,0,0,0.3);}
+  .modal h2{font-family:'DM Serif Display',serif;font-size:1.2rem;margin-bottom:14px;color:var(--text);}
+  .export-text{background:#1a1a2e;color:#e0e0e0;font-family:monospace;font-size:0.85rem;padding:14px;border-radius:10px;white-space:pre-wrap;line-height:1.7;margin-bottom:14px;}
+  .modal-actions{display:flex;gap:10px;justify-content:flex-end;}
+  /* Date nav for history */
+  .date-nav{display:flex;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap;}
+  .date-nav button{background:var(--white);border:1.5px solid var(--border);border-radius:8px;padding:6px 12px;font-family:'Inter',sans-serif;font-size:0.82rem;cursor:pointer;color:var(--text);}
+  .date-nav button:hover{border-color:var(--blue);color:var(--blue);}
+  .date-nav .current-date{font-family:'DM Serif Display',serif;font-size:1rem;color:var(--text);min-width:160px;text-align:center;}
+  .date-picker-input{font-family:'Inter',sans-serif;font-size:0.85rem;padding:6px 10px;border:1.5px solid var(--border);border-radius:8px;color:var(--text);background:var(--white);outline:none;cursor:pointer;}
+  .date-picker-input:focus{border-color:var(--blue);}
+  /* Arreglos tab */
+  .arreglos-summary{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:20px;background:var(--white);border:1.5px solid var(--border);border-radius:12px;padding:14px 18px;align-items:center;}
+  .arreglos-summary-item{display:flex;align-items:center;gap:6px;font-size:0.82rem;font-weight:600;color:var(--text);}
+  .arr-badge{border-radius:20px;padding:2px 9px;font-size:0.72rem;font-weight:700;color:#fff;background:var(--danger);}
+  .arr-badge.ok{background:#d1fae5;color:#065f46;}
+  .boat-section{background:var(--white);border:1.5px solid var(--border);border-radius:14px;padding:18px 20px;margin-bottom:14px;}
+  .boat-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
+  .boat-title{font-family:'DM Serif Display',serif;font-size:1.05rem;color:var(--text);}
+  .boat-count{border-radius:20px;padding:2px 10px;font-size:0.75rem;font-weight:700;background:var(--danger);color:#fff;}
+  .boat-count.zero{background:var(--border);color:var(--muted);}
+  .arreglo-item{display:flex;align-items:flex-start;gap:10px;padding:9px 0;border-bottom:1px solid var(--sand);}
+  .arreglo-item:last-child{border-bottom:none;}
+  .arreglo-text{font-size:0.88rem;color:var(--text);line-height:1.4;}
+  .arreglo-date{font-size:0.7rem;color:var(--muted);margin-top:2px;}
+  .arreglo-del{background:none;border:none;cursor:pointer;color:var(--muted);font-size:0.85rem;padding:4px 8px;border-radius:6px;transition:background 0.15s,color 0.15s;white-space:nowrap;}
+  .arreglo-del:hover{background:#fee2e2;color:var(--danger);}
+  .arreglo-add{display:flex;gap:8px;margin-top:12px;padding-top:12px;border-top:1px dashed var(--border);}
+  .arreglo-add input{flex:1;font-family:'Inter',sans-serif;font-size:0.85rem;padding:8px 12px;border:1.5px solid var(--border);border-radius:8px;color:var(--text);outline:none;}
+  .arreglo-add input:focus{border-color:var(--blue);}
+  /* Stats tab */
+  .stats-controls{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:20px;background:var(--white);border:1.5px solid var(--border);border-radius:12px;padding:14px 18px;}
+  .stats-controls label{font-size:0.78rem;font-weight:600;color:var(--muted);}
+  .stats-controls input[type="date"]{font-family:'Inter',sans-serif;font-size:0.85rem;padding:6px 10px;border:1.5px solid var(--border);border-radius:8px;color:var(--text);outline:none;}
+  .stats-controls input[type="date"]:focus{border-color:var(--blue);}
+  .stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px;}
+  @media(max-width:700px){.stats-grid{grid-template-columns:repeat(2,1fr);}}
+  .stat-card{background:var(--white);border:1.5px solid var(--border);border-radius:14px;padding:18px;text-align:center;box-shadow:0 2px 8px rgba(10,33,64,0.07);}
+  .stat-icon{font-size:1.4rem;margin-bottom:6px;}
+  .stat-num{font-family:'DM Serif Display',serif;font-size:1.6rem;color:var(--blue);line-height:1.1;}
+  .stat-label{font-size:0.72rem;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:0.04em;margin-top:4px;}
+  .stats-section{background:var(--white);border:1.5px solid var(--border);border-radius:14px;padding:18px 20px;margin-bottom:16px;}
+  .stats-section h3{font-family:'DM Serif Display',serif;font-size:1.05rem;color:var(--text);margin-bottom:12px;}
+  .stats-table{display:flex;flex-direction:column;gap:2px;}
+  .stats-row{display:flex;align-items:center;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--sand);font-size:0.85rem;gap:10px;}
+  .stats-row:last-child{border-bottom:none;}
+  .stats-row-label{font-weight:600;color:var(--text);flex:1;}
+  .stats-row-balance{color:var(--success);font-weight:700;}
+  .pay-amount-big{font-size:1.05rem;font-weight:800;color:#b45309;margin-top:3px;display:flex;align-items:center;gap:5px;}
+  .pay-amount-big span{font-family:'DM Serif Display',serif;font-size:1.15rem;}
+  /* Payments tab */
+  .payment-card{margin-bottom:12px;}
+  .payment-controls{padding:0 18px 16px;border-top:1.5px solid var(--border);margin-top:4px;padding-top:14px;}
+  .payment-method-row{display:flex;gap:8px;flex-wrap:wrap;}
+  .payment-method-btn{flex:1;min-width:130px;border:1.5px solid var(--border);background:var(--white);color:var(--text);border-radius:10px;padding:10px 12px;font-family:'Inter',sans-serif;font-size:0.82rem;font-weight:600;cursor:pointer;transition:all 0.15s;}
+  .payment-method-btn:hover{border-color:var(--blue);}
+  .payment-method-btn.active.method-tpv_bbva{background:#1464A5;border-color:#1464A5;color:#fff;}
+  .payment-method-btn.active.method-tpv_santander{background:#EC0000;border-color:#EC0000;color:#fff;}
+  .payment-method-btn.active.method-tpv_btp{background:#f97316;border-color:#f97316;color:#fff;}
+  .payment-method-btn.active.method-cash{background:var(--success);border-color:var(--success);color:#fff;}
+  .cash-delivered-check{display:flex;align-items:center;gap:8px;margin-top:12px;font-size:0.88rem;font-weight:600;color:var(--text);cursor:pointer;}
+  .cash-delivered-check input[type="checkbox"]{width:18px;height:18px;cursor:pointer;accent-color:var(--success);}
+  /* Editable client name */
+  .client-name-row{display:flex;align-items:center;gap:6px;}
+  .client-name-input{font-family:'DM Serif Display',serif;font-size:0.95rem;color:var(--text);border:none;outline:none;background:transparent;flex:1;min-width:100px;cursor:text;}
+  .client-name-input:focus{border-bottom:2px solid var(--blue);background:#f0f8ff;border-radius:4px 4px 0 0;padding:2px 4px;}
+  /* Review row */
+  .review-row{display:flex;align-items:center;gap:8px;margin-top:8px;}
+  .review-label{font-size:0.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.05em;}
+  .review-btn{font-size:0.78rem;font-weight:700;padding:3px 12px;border-radius:20px;border:1.5px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;transition:background 0.15s,color 0.15s,border-color 0.15s;}
+  .review-btn:hover{border-color:var(--blue);color:var(--blue);}
+  .review-btn.active-yes{background:#d1fae5;border-color:#059669;color:#065f46;}
+  .review-btn.active-no{background:#fee2e2;border-color:#dc2626;color:#991b1b;}
+  /* Split payment */
+  .split-payment-row{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-top:12px;padding-top:12px;border-top:1px dashed var(--border);}
+  .split-amount-field{flex:1;min-width:120px;}
+  .split-amount-field label{display:block;font-size:0.7rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.04em;margin-bottom:4px;}
+  .split-amount-field input{width:100%;font-family:'Inter',sans-serif;font-size:0.88rem;padding:7px 10px;border:1.5px solid var(--border);border-radius:8px;color:var(--text);outline:none;}
+  .split-amount-field input:focus{border-color:var(--blue);}
+  .split-amount-total{font-size:0.78rem;font-weight:600;padding:6px 10px;border-radius:8px;white-space:nowrap;}
+  .split-amount-total.ok{background:#dcfce7;color:var(--success);}
+  .split-amount-total.warn{background:#fef3c7;color:#b45309;}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">&#128198; <span>Vela Mayorca</span></div>
+  <div class="header-right">
+    <div class="sync-info" id="syncInfo"></div>
+    <div class="today-badge" id="todayBadge"></div>
+    <button class="btn btn-teal" id="btnSync" onclick="syncCalendar()" style="display:none">&#8645; Sync</button>
+    <button class="btn btn-blue" id="btnRefresh" onclick="loadFromSupabase()" style="display:none">&#8635;</button>
+    <button class="btn" id="btnEmployeeView" onclick="window.open(location.pathname+'?view=pagos','_blank')" style="display:none;background:#f1f5f9;color:var(--text)">&#128065; Empleado</button>
+    <button class="btn btn-danger" id="btnLogout" onclick="logout()" style="display:none">Salir</button>
+  </div>
+</header>
+<div class="tabs" id="tabBar" style="display:none">
+  <div class="tab" onclick="switchTab('today')" id="tab-today">&#128198; Hoy</div>
+  <div class="tab active" onclick="switchTab('tomorrow')" id="tab-tomorrow">&#128197; Manana</div>
+  <div class="tab" onclick="switchTab('week')" id="tab-week">&#128197; Semana</div>
+  <div class="tab" onclick="switchTab('history')" id="tab-history">&#128337; Historico</div>
+  <div class="tab" onclick="switchTab('payments')" id="tab-payments">&#128176; Pagos</div>
+  <div class="tab" onclick="switchTab('stats')" id="tab-stats">&#128202; Estadisticas</div>
+  <div class="tab" onclick="switchTab('arreglos')" id="tab-arreglos">&#128295; Arreglos</div>
+  <div class="tab" onclick="switchTab('compras')" id="tab-compras">&#128722; Compras</div>
+</div>
+<main>
+  <div id="loginScreen" style="display:none">
+    <div class="login-icon">&#128198;</div>
+    <div class="login-title">Vela Mayorca &middot; Admin</div>
+    <div class="login-sub">Conecta tu Google Calendar para sincronizar las reservas con el equipo.</div>
+    <button class="btn-google" onclick="startAuth()">
+      <svg width="20" height="20" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+      Conectar con Google
+    </button>
+  </div>
+  <div id="appContent" style="display:none">
+    <div id="view-today" style="display:none"></div>
+    <div id="view-tomorrow"></div>
+    <div id="view-week" style="display:none"></div>
+    <div id="view-history" style="display:none"></div>
+    <div id="view-payments" style="display:none"></div>
+    <div id="view-stats" style="display:none"></div>
+    <div id="view-arreglos" style="display:none"></div>
+    <div id="view-compras" style="display:none"></div>
+  </div>
+</main>
+
+<!-- WA Template Modal -->
+<div class="modal-overlay wa-template-modal" id="waTemplateModal" style="display:none" onclick="if(event.target===this)closeWaTemplate()">
+  <div class="modal">
+    <h2>&#128172; Mensaje de WhatsApp</h2>
+    <div class="template-vars">Variables: <code>{nombre}</code> <code>{hora}</code> <code>{barco}</code> <code>{pax}</code> <code>{patron}</code></div>
+    <textarea class="template-area" id="waTemplateText"></textarea>
+    <div style="margin-top:12px;display:flex;gap:8px;justify-content:flex-end">
+      <button class="btn" style="background:var(--border);color:var(--text)" onclick="closeWaTemplate()">Cancelar</button>
+      <button class="btn btn-blue" onclick="saveWaTemplate()">Guardar plantilla</button>
+      <a id="waTemplateSendLink" href="#" target="_blank"><button class="btn btn-wa" style="background:#25d366;color:#fff">&#128172; Abrir WhatsApp</button></a>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="exportModal" style="display:none" onclick="if(event.target===this)closeExport()">
+  <div class="modal">
+    <h2>&#128203; Resumen del dia</h2>
+    <div class="export-text" id="exportText"></div>
+    <div class="modal-actions">
+      <button class="btn btn-blue" onclick="copyExport()">&#128203; Copiar</button>
+      <button class="btn" style="background:var(--border);color:var(--text)" onclick="closeExport()">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const _a='472909472248-mkbdkopci5p8guo7eo3agl5a9v1mid';
+const _b='ua.apps.googleusercontent.com';
+const _c='GOCSPX-qsvIFRsFnn0nPD';
+const _d='xOAywnCGYORS6O';
+const _e='https://pqyiuhgybsnvhuz';
+const _f='sjnpy.supabase.co';
+const _g='sb_publishable_V3ZCmMWZwGCve5Os3AO6bA';
+const _h='_A_-hQJMb';
+const CLIENT_ID=_a+_b, CLIENT_SECRET=_c+_d, SUPABASE_URL=_e+_f, SUPABASE_KEY=_g+_h;
+const CALENDAR_NAMES=['SARAH','BTP'], ADMIN_KEY='vela-admin-2024';
+const BOATS=['Servus','Gambitero','Trui','Jaleo','RunWild'];
+const SKIPPERS=['Edu','Alberto','Silvio','Jaume','Gustavo','Leandro','Otro...'];
+
+const urlParams=new URLSearchParams(window.location.search);
+const isAdmin=urlParams.get('admin')===ADMIN_KEY||localStorage.getItem('vt_admin')===ADMIN_KEY;
+if(urlParams.get('admin')===ADMIN_KEY){localStorage.setItem('vt_admin',ADMIN_KEY);window.history.replaceState({},'',window.location.pathname);}
+const isPaymentsOnly=urlParams.get('view')==='pagos';
+
+const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+
+// ── Supabase ──────────────────────────────────────────────────────────────────
+async function loadAllNotes(){const{data,error}=await sb.from('notas').select('*');if(error){console.error(error);return{};}const map={};for(const r of(data||[]))map[r.event_id]=r;return map;}
+async function upsertNote(eventId,fields){const{error}=await sb.from('notas').upsert({event_id:eventId,...fields,updated_at:new Date().toISOString()},{onConflict:'event_id'});if(error)throw error;}
+async function saveEventsToSupabase(events){
+  if(!events.length)return;
+  const rows=events.map(b=>({id:b.id,title:b.title,start_time:b.start||null,end_time:b.end||null,date:b.date,buyer:b.parsed.buyer,phone:b.parsed.phone,email:b.parsed.email,pax:b.parsed.pax,variant:b.parsed.variant,updated_at:new Date().toISOString()}));
+  const{error}=await sb.from('eventos').upsert(rows,{onConflict:'id'});
+  if(error)throw error;
+  localStorage.setItem('vt_last_sync',new Date().toISOString());
+  updateSyncInfo();
+}
+async function loadEventsFromSupabase(dateFrom,dateTo){
+  const{data,error}=await sb.from('eventos').select('*').gte('date',dateFrom).lte('date',dateTo).order('start_time');
+  if(error)throw error;
+  return(data||[]).map(r=>({id:r.id,title:r.title,start:r.start_time,end:r.end_time,date:r.date,parsed:{buyer:r.buyer||'',phone:r.phone||'',email:r.email||'',pax:r.pax||'',variant:r.variant||''}}));
+}
+
+function updateSyncInfo(){
+  const last=localStorage.getItem('vt_last_sync');
+  const el=document.getElementById('syncInfo');
+  if(!el)return;
+  if(last){const d=new Date(last);el.textContent='Sync: '+d.toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'});}
+}
+
+// ── Auth ──────────────────────────────────────────────────────────────────────
+let accessToken=null,tokenExpiry=0;
+function getRedirectUri(){return window.location.href.split('?')[0].split('#')[0];}
+function saveToken(t,exp){accessToken=t;tokenExpiry=Date.now()+(exp-60)*1000;try{sessionStorage.setItem('vt_token',t);sessionStorage.setItem('vt_expiry',tokenExpiry);}catch(e){}}
+function loadToken(){try{const t=sessionStorage.getItem('vt_token'),e=parseInt(sessionStorage.getItem('vt_expiry')||'0');if(t&&Date.now()<e){accessToken=t;tokenExpiry=e;return true;}}catch(e){}return false;}
+function clearToken(){accessToken=null;tokenExpiry=0;try{sessionStorage.removeItem('vt_token');sessionStorage.removeItem('vt_expiry');}catch(e){}}
+function b64url(buf){return btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=/g,'');}
+async function genVerifier(){const a=new Uint8Array(32);crypto.getRandomValues(a);return b64url(a);}
+async function genChallenge(v){return b64url(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(v)));}
+async function startAuth(){
+  const ver=await genVerifier(),chal=await genChallenge(ver);
+  sessionStorage.setItem('vt_verifier',ver);
+  const p=new URLSearchParams({client_id:CLIENT_ID,redirect_uri:getRedirectUri(),response_type:'code',scope:'https://www.googleapis.com/auth/calendar.readonly',code_challenge:chal,code_challenge_method:'S256',access_type:'online',prompt:'consent'});
+  window.location.href='https://accounts.google.com/o/oauth2/v2/auth?'+p;
+}
+async function handleCallback(code){
+  const ver=sessionStorage.getItem('vt_verifier')||'';sessionStorage.removeItem('vt_verifier');
+  showLoading('Autenticando...');
+  const r=await fetch('https://oauth2.googleapis.com/token',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({code,client_id:CLIENT_ID,client_secret:CLIENT_SECRET,redirect_uri:getRedirectUri(),grant_type:'authorization_code',code_verifier:ver})});
+  const d=await r.json();
+  if(d.access_token){saveToken(d.access_token,d.expires_in||3600);window.history.replaceState({},'',window.location.pathname);showApp(true);await syncCalendar();startAutoSync();}
+  else showError('Error auth: '+(d.error_description||d.error||'desconocido'));
+}
+function logout(){clearToken();localStorage.removeItem('vt_admin');showLogin();}
+
+// ── Google Calendar ───────────────────────────────────────────────────────────
+async function getCalendarIds(){
+  const r=await fetch('https://www.googleapis.com/calendar/v3/users/me/calendarList',{headers:{Authorization:'Bearer '+accessToken}});
+  const d=await r.json();if(d.error)throw new Error(d.error.message);
+  const cals=(d.items||[]).filter(c=>CALENDAR_NAMES.some(n=>c.summary?.toUpperCase().includes(n)||c.summaryOverride?.toUpperCase().includes(n)));
+  return cals.length?cals.map(c=>c.id):['primary'];
+}
+async function fetchGoogleEvents(calId,tMin,tMax){
+  const p=new URLSearchParams({timeMin:tMin.toISOString(),timeMax:tMax.toISOString(),singleEvents:'true',orderBy:'startTime',maxResults:'100'});
+  const r=await fetch('https://www.googleapis.com/calendar/v3/calendars/'+encodeURIComponent(calId)+'/events?'+p,{headers:{Authorization:'Bearer '+accessToken}});
+  const d=await r.json();if(d.error)throw new Error(d.error.message);return d.items||[];
+}
+async function syncCalendar(silent){
+  const btn=document.getElementById('btnSync');
+  if(!silent&&btn){btn.disabled=true;btn.innerHTML='&#8645;...';}
+  if(!silent)showLoading('Sincronizando calendarios...');
+  try{
+    const calIds=await getCalendarIds();
+    const today=new Date();today.setHours(0,0,0,0);
+    const wEnd=new Date(today);wEnd.setDate(today.getDate()+14);wEnd.setHours(23,59,59,999); // 2 weeks from today
+    const allEventsArr=await Promise.all(calIds.map(id=>fetchGoogleEvents(id,today,wEnd)));
+    const events=allEventsArr.flat();
+    const bookings=events.flatMap(parseEvents);
+    await saveEventsToSupabase(bookings);
+    await loadFromSupabase();
+  }catch(err){if(!silent)showError('Error sync: '+err.message);}
+  if(!silent&&btn){btn.disabled=false;btn.innerHTML='&#8645; Sync';}
+}
+
+let autoSyncInterval=null;
+function startAutoSync(){
+  if(autoSyncInterval)clearInterval(autoSyncInterval);
+  autoSyncInterval=setInterval(()=>{ if(isAdmin&&accessToken)syncCalendar(true); }, 5*60*1000); // every 5 min
+}
+
+// ── Load from Supabase ────────────────────────────────────────────────────────
+async function loadFromSupabase(){
+  const btn=document.getElementById('btnRefresh');if(btn){btn.disabled=true;}
+  showLoading('Cargando reservas...');
+  try{
+    const today=new Date();
+    const todayStr=toDateStr(today);
+    const tom=new Date();tom.setDate(tom.getDate()+1);
+    const tStr=toDateStr(tom);
+    const wEnd=new Date(tom);wEnd.setDate(tom.getDate()+6);
+    const wStr=toDateStr(wEnd);
+    const[events,notesMap]=await Promise.all([loadEventsFromSupabase(todayStr,wStr),loadAllNotes()]);
+    allNotes=notesMap;allBookings=events;
+
+    renderToday();
+    renderTomorrow();
+    renderWeek();
+    if(!events.length){['today','tomorrow','week'].forEach(v=>{document.getElementById('view-'+v).innerHTML='<div class="state-screen"><div class="icon">&#127754;</div><h2>Sin reservas</h2><p>'+(isAdmin?'Pulsa Sync para cargar el calendario.':'Sin reservas por ahora.')+'</p></div>';});}
+  }catch(err){showError('Error: '+err.message);}
+  if(btn){btn.disabled=false;}
+  updateSyncInfo();
+}
+
+// ── State ─────────────────────────────────────────────────────────────────────
+let allBookings=[],allNotes={};
+let searchQuery='';
+let isCompact=false;
+const DEFAULT_WA_TEMPLATE='Hola {nombre}! Te escribimos desde Vela Tours para confirmar tu reserva de manana a las {hora} en el {barco} para {pax} personas. Tu patron sera {patron}. Cualquier duda estamos aqui!';
+let activeBoatFilter='all', activeSkipperFilter='all';
+
+
+function toDateStr(d){const y=d.getFullYear();const m=String(d.getMonth()+1).padStart(2,'0');const day=String(d.getDate()).padStart(2,'0');return y+'-'+m+'-'+day;}
+function formatTime(iso){if(!iso||!iso.includes('T'))return'--';try{return new Date(iso).toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'});}catch(e){return'--';}}
+function formatDateLabel(ds){try{const d=new Date(ds+'T12:00:00');return{weekday:d.toLocaleDateString('es-ES',{weekday:'long'}),rest:d.toLocaleDateString('es-ES',{day:'numeric',month:'long'})};}catch(e){return{weekday:'',rest:ds};}}
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+
+
+
+function filterBookings(bookings){
+  return bookings.filter(b=>{
+    const n=allNotes[b.id]||{};
+    const boatOk=activeBoatFilter==='all'||(n.boat||'')===activeBoatFilter;
+    const skipperOk=activeSkipperFilter==='all'||(n.skipper||'')===activeSkipperFilter;
+    const q=searchQuery.toLowerCase();
+    const searchOk=!q||(b.parsed.buyer||'').toLowerCase().includes(q)||(n.phone||b.parsed.phone||'').includes(q)||(b.title||'').toLowerCase().includes(q)||(b.parsed.email||'').toLowerCase().includes(q);
+    return boatOk&&skipperOk&&searchOk;
+  }).sort((a,b)=>{
+    // Sort chronologically
+    if(!a.start)return 1;if(!b.start)return -1;
+    return new Date(a.start)-new Date(b.start);
+  });
+}
+
+// ── Render helpers ────────────────────────────────────────────────────────────
+function renderFilterBar(containerId){
+  let html='<div class="search-bar"><input class="search-input" placeholder="&#128269; Buscar por nombre, teléfono o email..." value="'+esc(searchQuery)+'" oninput="setSearch(this.value)"/><button class="btn '+(isCompact?'btn-blue':'btn btn-deep')+'" onclick="toggleCompact()" style="white-space:nowrap;padding:8px 12px">'+(isCompact?'&#8853; Expandir':'&#8851; Compacto')+'</button></div>';
+  html+='<div class="filter-bar">';
+  html+='<span class="filter-label">Barco:</span>';
+  html+='<button class="filter-chip '+(activeBoatFilter==='all'?'active':'')+'" onclick="setBoatFilter(\'all\')">Todos</button>';
+  BOATS.forEach(b=>{html+='<button class="filter-chip '+(activeBoatFilter===b?'active':'')+'" onclick="setBoatFilter(\''+b+'\')">'+b+'</button>';});
+  html+='<span class="filter-label" style="margin-left:8px">Patron:</span>';
+  html+='<select class="skipper-select" onchange="setSkipperFilter(this.value)">';
+  html+='<option value="all" '+(activeSkipperFilter==='all'?'selected':'')+'>Todos</option>';
+  SKIPPERS.forEach(s=>{html+='<option value="'+s+'" '+(activeSkipperFilter===s?'selected':'')+'>'+s+'</option>';});
+  html+='</select>';
+
+  html+='</div>';
+  return html;
+}
+
+function setBoatFilter(boat){activeBoatFilter=boat;renderToday();renderTomorrow();renderWeek();}
+function setSkipperFilter(skipper){activeSkipperFilter=skipper;renderToday();renderTomorrow();renderWeek();}
+
+function renderToday(){
+  const today=new Date();
+  const todayStr=toDateStr(today);
+  const bookings=filterBookings(allBookings.filter(b=>b.date===todayStr));
+  renderView(bookings,'view-today',false,true);
+}
+function renderTomorrow(){
+  const tom=new Date();tom.setDate(tom.getDate()+1);
+  const tStr=toDateStr(tom);
+  const bookings=filterBookings(allBookings.filter(b=>b.date===tStr));
+  renderView(bookings,'view-tomorrow',true);
+}
+function renderWeek(){
+  const bookings=filterBookings(allBookings);
+  renderView(bookings,'view-week',false);
+}
+
+function renderView(bookings,cid,isTomorrow,isToday){
+  const el=document.getElementById(cid);
+  const filters=renderFilterBar(cid);
+  if(!bookings.length){
+    el.innerHTML=filters+'<div class="state-screen"><div class="icon">&#127754;</div><h2>Sin reservas</h2><p>No hay tours para este periodo.</p></div>';
+    return;
+  }
+  const byDate={};for(const b of bookings){if(!byDate[b.date])byDate[b.date]=[];byDate[b.date].push(b);}
+  const totalPax=bookings.reduce((s,b)=>s+(parseInt(b.parsed.pax)||0),0);
+  const contacted=bookings.filter(b=>allNotes[b.id]?.contacted==='si').length;
+  const reminded=bookings.filter(b=>allNotes[b.id]?.contacted==='reminder').length;
+  const notContacted=bookings.filter(b=>!allNotes[b.id]?.contacted||allNotes[b.id]?.contacted==='').length;
+  const totalBalance=bookings.reduce((s,b)=>s+(parseFloat(allNotes[b.id]?.balance)||0),0);
+
+
+  const progressRing=renderProgressRing(bookings,isTomorrow);
+  let adminBar='';
+  if(isAdmin&&isTomorrow){adminBar='<div class="admin-bar"><span>&#128274; Modo <strong>Admin</strong></span><button class="btn btn-teal" onclick="syncCalendar()" style="padding:5px 10px;font-size:0.76rem">&#8645; Sincronizar</button></div>';}
+
+  let exportBtn=isTomorrow?'<button class="btn btn-export btn-sm" onclick="showExport()">&#128203; Exportar</button>':'';
+
+  let html=filters+adminBar+progressRing;
+  html+='<div class="top-bar"><div class="summary-bar">';
+  html+='<div class="sum-item"><div class="sum-num">'+bookings.length+'</div><div class="sum-label">Reservas</div></div>';
+  html+='<div class="sum-item"><div class="sum-num">'+(totalPax||'--')+'</div><div class="sum-label">Personas</div></div>';
+  html+='<div class="sum-item"><div class="sum-num" style="color:var(--danger)">'+notContacted+'</div><div class="sum-label">Sin contactar</div></div>';
+  html+='<div class="sum-item"><div class="sum-num" style="color:var(--warn)">'+contacted+'</div><div class="sum-label">Contactados</div></div>';
+  html+='<div class="sum-item"><div class="sum-num" style="color:var(--success)">'+reminded+'</div><div class="sum-label">Enviados</div></div>';
+  if(isAdmin&&totalBalance>0)html+='<div class="sum-item"><div class="sum-num sum-balance">'+totalBalance.toLocaleString('es-ES',{minimumFractionDigits:0,maximumFractionDigits:0})+'&#8364;</div><div class="sum-label">Balance</div></div>';
+  const tapasList=bookings.map(b=>parseInt(allNotes[b.id]?.food_tapas)||0).filter(v=>v>0);
+  const fishList=bookings.map(b=>parseInt(allNotes[b.id]?.food_fish)||0).filter(v=>v>0);
+  const meatList=bookings.map(b=>parseInt(allNotes[b.id]?.food_meat)||0).filter(v=>v>0);
+  const veggieList=bookings.map(b=>parseInt(allNotes[b.id]?.food_veggie)||0).filter(v=>v>0);
+  const totalTapas=tapasList.reduce((s,v)=>s+v,0);
+  const totalFish=fishList.reduce((s,v)=>s+v,0);
+  const totalMeat=meatList.reduce((s,v)=>s+v,0);
+  const totalVeggie=veggieList.reduce((s,v)=>s+v,0);
+  if(totalTapas>0)html+='<div class="sum-item"><div class="sum-num">'+totalTapas+'</div><div class="sum-label">&#127860; Tapas ('+tapasList.join('-')+')</div></div>';
+  if(totalFish>0)html+='<div class="sum-item"><div class="sum-num">'+totalFish+'</div><div class="sum-label">&#128031; Fish ('+fishList.join('-')+')</div></div>';
+  if(totalMeat>0)html+='<div class="sum-item"><div class="sum-num">'+totalMeat+'</div><div class="sum-label">&#129385; Meat ('+meatList.join('-')+')</div></div>';
+  if(totalVeggie>0)html+='<div class="sum-item"><div class="sum-num">'+totalVeggie+'</div><div class="sum-label">&#129382; Veggie ('+veggieList.join('-')+')</div></div>';
+
+  html+='</div>'+exportBtn+'</div>';
+
+  for(const[date,dayB]of Object.entries(byDate)){
+    const{weekday,rest}=formatDateLabel(date);
+    const dayPax=dayB.reduce((s,b)=>s+(parseInt(b.parsed.pax)||0),0);
+    const dayBalance=dayB.reduce((s,b)=>s+(parseFloat(allNotes[b.id]?.balance)||0),0);
+    html+='<div class="day-section '+(isCompact?'compact':'')+'"><div class="day-header"><div class="day-label">'+rest+'<span class="weekday">'+weekday+'</span></div>';
+    html+='<div class="day-count">'+dayB.length+' tours &middot; '+dayPax+' pax'+(isAdmin&&dayBalance>0?' &middot; '+dayBalance.toLocaleString('es-ES')+'&#8364;':'')+'</div></div>';
+    for(const b of dayB)html+=renderCard(b);
+    html+='</div>';
+  }
+  el.innerHTML=html;
+}
+
+// ── Parse ─────────────────────────────────────────────────────────────────────
+function parseEvents(ev){
+  const raw=ev.description||'';
+  const desc=raw.replace(/<br\s*\/?>/gi,' ').replace(/<[^>]+>/g,' ').replace(/&nbsp;/g,' ').replace(/\s+/g,' ').trim();
+  const start=ev.start?.dateTime||ev.start?.date||'';
+  const base={title:ev.summary||'Sin titulo',start,end:ev.end?.dateTime||ev.end?.date||'',date:start.split('T')[0]};
+
+  // Detectar múltiples reservas: dividir por bloques "Variation Name:" o "Buyer:"
+  let blocks;
+  if((desc.match(/Variation Name:/gi)||[]).length>1){
+    blocks=desc.split(/(?=Variation Name:)/i).filter(s=>s.trim()&&/Buyer:/i.test(s));
+  }else if((desc.match(/Buyer:/gi)||[]).length>1){
+    blocks=desc.split(/(?=Buyer:)/i).filter(s=>s.trim()&&/Buyer:/i.test(s));
+  }else{
+    blocks=[desc];
+  }
+
+  return blocks.map((block,i)=>{
+    const get=re=>{const m=block.match(re);return m?(m[1]||'').trim():'';};
+    const buyer=get(/Buyer:\s*(.+?)(?=Customer Phone:|Customer Email:|N[uú]mero|$)/i);
+    const rawPhone=(get(/Customer Phone:\s*(.+?)(?=Customer Email:|N[uú]mero|Buyer:|Variation Name:|More information|$)/i)||get(/Phone:\s*(.+?)(?=Customer Email:|N[uú]mero|Buyer:|Variation Name:|More information|$)/i)).replace(/[<>]/g,'').trim();
+    const phone=rawPhone.replace(/[^0-9]/g,'').length<=2?'':rawPhone;
+    const email=(get(/Customer Email:\s*(\S+)/i)||get(/Email:\s*(\S+)/i)).replace(/[<>[\]]/g,'');
+    const pax=get(/N[uú]mero de participantes:\s*(\d+)/i)||get(/participants?:\s*(\d+)/i)||get(/(\d+)\s*pax/i);
+    const variant=get(/Variation Name:\s*(.+?)(?=Buyer:|Customer|N[uú]mero|$)/i);
+    const id=blocks.length>1?ev.id+'_'+i:ev.id;
+    return{...base,id,parsed:{buyer,phone,email,pax,variant}};
+  });
+}
+
+// ── Prefix ────────────────────────────────────────────────────────────────────
+const CDB=[
+  {cc:'+34', flag:'🇪🇸', local:[9]},
+  {cc:'+44', flag:'🇬🇧', local:[10]},
+  {cc:'+49', flag:'🇩🇪', local:[10,11]},
+  {cc:'+33', flag:'🇫🇷', local:[9]},
+  {cc:'+1',  flag:'🇺🇸', local:[10]},
+  {cc:'+31', flag:'🇳🇱', local:[9]},
+  {cc:'+39', flag:'🇮🇹', local:[9,10]},
+  {cc:'+351',flag:'🇵🇹', local:[9]},
+  {cc:'+352',flag:'🇱🇺', local:[9]},
+  {cc:'+32', flag:'🇧🇪', local:[9]},
+  {cc:'+41', flag:'🇨🇭', local:[9]},
+  {cc:'+43', flag:'🇦🇹', local:[10,11]},
+  {cc:'+46', flag:'🇸🇪', local:[9]},
+  {cc:'+47', flag:'🇳🇴', local:[8]},
+  {cc:'+45', flag:'🇩🇰', local:[8]},
+  {cc:'+358',flag:'🇫🇮', local:[9,10]},
+  {cc:'+48', flag:'🇵🇱', local:[9]},
+  {cc:'+420',flag:'🇨🇿', local:[9]},
+  {cc:'+36', flag:'🇭🇺', local:[9]},
+  {cc:'+7',  flag:'🇷🇺', local:[10]},
+  {cc:'+55', flag:'🇧🇷', local:[11]},
+  {cc:'+61', flag:'🇦🇺', local:[9]},
+  {cc:'+81', flag:'🇯🇵', local:[10,11]},
+  {cc:'+86', flag:'🇨🇳', local:[11]},
+  {cc:'+972',flag:'🇮🇱', local:[9]},
+  {cc:'+971',flag:'🇦🇪', local:[9]},
+  {cc:'+353',flag:'🇮🇪', local:[9]},
+  {cc:'+54', flag:'🇦🇷', local:[10]},
+  {cc:'+52', flag:'🇲🇽', local:[10]},
+  {cc:'+56', flag:'🇨🇱', local:[9]},
+  {cc:'+57', flag:'🇨🇴', local:[10]},
+  {cc:'+27', flag:'🇿🇦', local:[9]},
+  {cc:'+64', flag:'🇳🇿', local:[9]},
+];
+const BOOST={'+34':2.5,'+44':2.0,'+49':1.8,'+33':1.5,'+1':1.5,'+31':1.4};
+function hasPrefix(p){const n=p.replace(/[^0-9+]/g,'');return n.startsWith('+')||n.startsWith('00');}
+function guessPrefix(phone){
+  const n=phone.replace(/[^0-9+]/g,'');if(hasPrefix(phone))return null;
+  let best=null,bestS=0;
+  for(const e of CDB){let s=5;
+    if(e.local.includes(n.length))s+=30;
+    if(e.cc==='+34'&&n.length===9&&['6','7'].includes(n[0]))s+=50;
+    if(e.cc==='+44'&&n.startsWith('07')&&n.length===11)s+=50;
+    if(e.cc==='+31'&&n.startsWith('06')&&n.length===10)s+=45;
+    if(e.cc==='+49'&&n.startsWith('0')&&n.length>=10)s+=25;
+    if(e.cc==='+33'&&n.startsWith('0')&&n.length===10)s+=30;
+    if(e.cc==='+1'&&n.length===10)s+=20;
+    s*=(BOOST[e.cc]||1);if(s>bestS){bestS=s;best=e;}}
+  return best;
+}
+function getFlag(phone){
+  if(!phone)return '';
+  const n=phone.replace(/[^0-9+]/g,'');
+  if(n.startsWith('+')){
+    // Try longest match first (3 digits, then 2, then 1)
+    for(const len of[3,2,1]){
+      const cc='+'+n.slice(1,1+len);
+      const e=CDB.find(x=>x.cc===cc);
+      if(e)return e.flag;
+    }
+  } else if(n.startsWith('00')){
+    for(const len of[3,2,1]){
+      const cc='+'+n.slice(2,2+len);
+      const e=CDB.find(x=>x.cc===cc);
+      if(e)return e.flag;
+    }
+  }
+  const g=guessPrefix(phone);return g?g.flag:'';
+}
+function buildWa(phone){
+  let n=phone.replace(/[^0-9+]/g,'');
+  if(n.startsWith('00'))n='+'+n.slice(2);
+  if(!n.startsWith('+')){const g=guessPrefix(phone);if(g){let l=n;if(['+44','+31','+49','+33'].includes(g.cc)&&n.startsWith('0'))l=n.slice(1);n=g.cc.replace('+','')+l;}}
+  else n=n.slice(1);return n;
+}
+
+// ── Progress & ready logic ───────────────────────────────────────────────────
+function isBookingReady(n,phone){
+  const foodOk=n.food==='no'||((n.food_tapas||0)+(n.food_fish||0)+(n.food_meat||0)+(n.food_veggie||0))>0;
+  return !!(n.pax && foodOk && n.boat && n.balance && n.contacted==='reminder');
+}
+function calcProgress(bookings){
+  if(!bookings.length)return{pct:0,ready:0,total:0,pending:[]};
+  const FIELDS=['pax','food','boat','balance','contacted'];
+  let totalFields=0,filledFields=0,readyCount=0,pendingNames=[];
+  for(const b of bookings){
+    const n=allNotes[b.id]||{};
+    const phone=n.phone||b.parsed.phone||'';
+    totalFields+=FIELDS.length;
+    if(n.pax)filledFields++;
+    const foodFilled=n.food==='no'||((parseInt(n.food_tapas)||0)+(parseInt(n.food_fish)||0)+(parseInt(n.food_meat)||0)+(parseInt(n.food_veggie)||0))>0||n.food==='si';
+    if(foodFilled)filledFields++;
+    if(n.boat)filledFields++;
+    if(parseFloat(n.balance)||0)filledFields++;
+    if(n.contacted==='reminder')filledFields++;
+    if(isBookingReady(n,phone))readyCount++;
+    else pendingNames.push(b.parsed.buyer||b.title);
+  }
+  return{pct:Math.round(filledFields/totalFields*100),ready:readyCount,total:bookings.length,pending:pendingNames};
+}
+function renderProgressRing(bookings,isTomorrow){
+  if(!isTomorrow)return'';
+  const{pct,ready,total,pending}=calcProgress(bookings);
+  const r=30,circ=2*Math.PI*r,offset=circ-(pct/100*circ);
+  const color=pct===100?'#7c3aed':pct>=60?'var(--success)':pct>=30?'var(--warn)':'var(--danger)';
+  let notifyBtn='';
+  if(pct===100){
+    const msg=encodeURIComponent('Hola Alberto! Ya puedes acceder a exportar el planning de manana. Todo completado al 100%.');
+    notifyBtn='<a href="https://wa.me/34672751717?text='+msg+'" target="_blank"><button class="btn-notify">&#128172; Avisar a Alberto</button></a>';
+  }
+  const subText=pct===100?'Todo completado! '+ready+'/'+total+' reservas listas.':(ready+'/'+total+' reservas completas. Pendiente: '+pending.slice(0,2).map(n=>n.split(' ')[0]).join(', ')+(pending.length>2?' y '+(pending.length-2)+' mas':'')+'.');
+  return'<div class="progress-wrap"><div class="progress-ring"><svg width="70" height="70" viewBox="0 0 70 70"><circle class="ring-bg" cx="35" cy="35" r="'+r+'"/><circle class="ring-fill" cx="35" cy="35" r="'+r+'" stroke="'+color+'" stroke-dasharray="'+circ.toFixed(1)+'" stroke-dashoffset="'+offset.toFixed(1)+'"/></svg><div class="progress-pct" style="color:'+color+'">'+pct+'%</div></div><div class="progress-info"><div class="progress-title">Planning de manana</div><div class="progress-sub">'+subText+'</div></div>'+notifyBtn+'</div>';
+}
+
+// ── Render card ───────────────────────────────────────────────────────────────
+function renderCard(b){
+  const p=b.parsed,n=allNotes[b.id]||{};
+  const phone=n.phone||p.phone||'';
+  const needsP=phone&&!hasPrefix(phone);
+  const guess=needsP?guessPrefix(phone):null;
+  const waNum=phone?buildWa(phone):'';
+  const flag=getFlag(phone);
+  const isReady=isBookingReady(n,phone);
+  const isContacted=n.contacted==='si'||n.contacted==='reminder';
+  const dotC=isReady?'dot-ready':(isContacted?'dot-done':(phone?'dot-pending':'dot-none'));
+  const sid=esc(b.id);
+  const boat=n.boat||'';
+  const skipper=n.skipper||'';
+  const isNew=false;
+
+  const isReminder=n.contacted==='reminder';
+  const cardBg=isReminder?' is-ready':isContacted?' is-contacted':'';
+  let html='<div class="booking-card'+cardBg+'" id="card-'+sid+'">';
+  html+='<div class="card-top">';
+  html+='<div class="time-col" onclick="toggleNotes(\''+sid+'\',\''+esc(b.id)+'\')"><div class="time-big">'+formatTime(b.start)+'</div><div class="time-end">'+formatTime(b.end)+'</div></div>';
+  html+='<div class="divider-v"></div>';
+  html+='<div class="info-col" onclick="toggleNotes(\''+sid+'\',\''+esc(b.id)+'\')">';
+  html+='<div class="booking-title">'+esc(b.title)+(isReady?'<span class="ready-badge">&#10003; LISTO</span>':'')+'</div>';
+  if(p.buyer)html+='<div class="booking-buyer">&#129489; '+esc(p.buyer)+'</div>';
+  if(p.email)html+='<div class="booking-email">&#9993; '+esc(p.email)+'</div>';
+  html+='<div class="booking-meta">';
+  if(p.pax)html+='<span class="meta-chip chip-pax">&#128101; '+esc(p.pax)+' pax</span>';
+  if(boat)html+='<span class="meta-chip chip-boat">&#128674; '+esc(boat)+'</span>';
+  if(skipper)html+='<span class="meta-chip chip-type">&#128081; '+esc(skipper)+'</span>';
+  if(p.variant)html+='<span class="meta-chip chip-type">'+esc(p.variant)+'</span>';
+  html+='</div>';
+  // Notes summary pills inside info-col
+  const pills=[];
+  if(n.contacted==='si')pills.push('<span class="note-pill">&#9989; Contactado</span>');
+  else if(n.contacted==='reminder')pills.push('<span class="note-pill">&#128228; Reminder enviado</span>');
+  else if(n.contacted==='no_responde')pills.push('<span class="note-pill">&#128244; No responde</span>');
+  if(isAdmin&&n.balance)pills.push('<span class="note-pill">&#128176; <strong>'+n.balance+'&#8364;</strong></span>');
+  const tapas=parseInt(n.food_tapas)||0,fish=parseInt(n.food_fish)||0,meat=parseInt(n.food_meat)||0,veggie=parseInt(n.food_veggie)||0;
+  if(tapas>0)pills.push('<span class="note-pill">&#127860; <strong>'+tapas+'</strong> tapas</span>');
+  if(fish>0)pills.push('<span class="note-pill">&#128031; <strong>'+fish+'</strong> fish</span>');
+  if(meat>0)pills.push('<span class="note-pill">&#129385; <strong>'+meat+'</strong> meat</span>');
+  if(veggie>0)pills.push('<span class="note-pill">&#129382; <strong>'+veggie+'</strong> veggie</span>');
+  if(n.comment)pills.push('<span class="note-pill">&#128172; '+esc(n.comment.slice(0,40))+(n.comment.length>40?'...':'')+'</span>');
+  if(pills.length)html+='<div class="notes-summary" style="margin-top:8px;display:flex;flex-wrap:wrap;gap:5px;">'+pills.join('')+'</div>';
+  html+='</div>';
+  html+='<div class="status-dot '+dotC+'" id="dot-'+sid+'"></div>';
+  html+='</div>';
+
+  // Phone row
+  html+='<div class="phone-row">';
+  if(flag)html+='<span style="font-size:1.1rem">'+flag+'</span>';
+  html+='<input class="phone-input" id="phone-'+sid+'" value="'+esc(phone)+'" placeholder="Sin telefono" oninput="onPhoneInput(\''+sid+'\')" onblur="onPhoneBlur(\''+sid+'\')" onclick="event.stopPropagation()"/>';
+  html+='<button class="btn-phone-save" id="phonesave-'+sid+'" onclick="savePhone(\''+sid+'\',\''+esc(b.id)+'\')">Guardar</button>';
+  if(needsP&&guess)html+='<span class="prefix-hint">&#9888; sin prefijo &middot; '+esc(guess.flag)+' '+esc(guess.cc)+'</span>';
+  html+='</div>';
+
+  // Actions
+  html+='<div class="card-actions">';
+  if(phone){
+    html+='<button class="btn-sm btn-copy" onclick="copyText(\''+esc(phone)+'\',this)">&#128203; Copiar</button>';
+    html+='<a href="https://wa.me/'+waNum+'" target="_blank"><button class="btn-sm btn-wa">&#128172; WhatsApp</button></a>';
+    html+='<button class="btn-sm" style="background:#dcfce7;color:#16a34a;border:1px solid #16a34a" onclick="openWaTemplate(\''+esc(b.id)+'\',event)">&#128172; Reminder</button>';
+  }
+  html+='<button class="btn-sm btn-notes" onclick="toggleNotes(\''+sid+'\',\''+esc(b.id)+'\')">&#128221; '+(allNotes[b.id]?'Notas':'Notas')+'</button>';
+  html+='</div>';
+
+  // Notes panel
+  const boatOpts=BOATS.map(bt=>'<option value="'+bt+'" '+(n.boat===bt?'selected':'')+'>'+bt+'</option>').join('');
+  const skipOpts=SKIPPERS.map(sk=>'<option value="'+sk+'" '+(n.skipper===sk?'selected':'')+'>'+sk+'</option>').join('');
+  html+='<div class="notes-panel" id="notes-'+sid+'">';
+  html+='<div class="notes-grid">';
+  html+='<div class="note-field"><label>Personas confirmadas</label><input type="number" min="1" max="50" placeholder="'+esc(p.pax||'')+'" value="'+esc(n.pax||'')+'" id="n-pax-'+sid+'"/></div>';
+  html+='<div class="note-field"><label>Comida</label><select id="n-food-'+sid+'" onchange="toggleFoodFields(this)">'
+  +'<option value="" '+((!n.food)?'selected':'')+'>-- Sin confirmar --</option>'
+  +'<option value="si" '+((n.food==='si')?'selected':'')+'>Si quieren</option>'
+  +'<option value="no" '+((n.food==='no')?'selected':'')+'>No quieren</option>'
+  +'<option value="pendiente" '+((n.food==='pendiente')?'selected':'')+'>Pendiente</option>'
+  +'</select></div>';
+  const foodVisible=(n.food==='si'||(!n.food&&((n.food_tapas||0)+(n.food_fish||0)+(n.food_meat||0)+(n.food_veggie||0))>0));
+  html+='<div class="note-field food-qty-fields" id="food-qty-'+sid+'" style="grid-column:1/-1;display:'+(foodVisible?'block':'none')+'">'
+  +'<label>Cantidades de comida</label>'
+  +'<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:6px">'
+  +'<div style="flex:1;min-width:100px"><div style="font-size:0.75rem;color:var(--muted);margin-bottom:4px">&#127860; Tapas</div><input type="number" min="0" max="50" placeholder="0" value="'+(n.food_tapas||'')+'" id="n-tapas-'+sid+'"/></div>'
+  +'<div style="flex:1;min-width:100px"><div style="font-size:0.75rem;color:var(--muted);margin-bottom:4px">&#128031; Fish Paella</div><input type="number" min="0" max="50" placeholder="0" value="'+(n.food_fish||'')+'" id="n-fish-'+sid+'"/></div>'
+  +'<div style="flex:1;min-width:100px"><div style="font-size:0.75rem;color:var(--muted);margin-bottom:4px">&#129385; Meat Paella</div><input type="number" min="0" max="50" placeholder="0" value="'+(n.food_meat||'')+'" id="n-meat-'+sid+'"/></div>'
+  +'<div style="flex:1;min-width:100px"><div style="font-size:0.75rem;color:var(--muted);margin-bottom:4px">&#129382; Veggie Paella</div><input type="number" min="0" max="50" placeholder="0" value="'+(n.food_veggie||'')+'" id="n-veggie-'+sid+'"/></div>'
+  +'</div></div>';
+  html+='<div class="note-field"><label>Barco</label><select id="n-boat-'+sid+'"><option value="">-- Seleccionar --</option>'+boatOpts+'</select></div>';
+  html+='<div class="note-field"><label>Patron</label><select id="n-skipper-'+sid+'"><option value="">-- Seleccionar --</option>'+skipOpts+'</select></div>';
+  html+='<div class="note-field"><label>Balance (EUR)</label><input type="number" min="0" step="0.01" placeholder="0.00" value="'+esc(n.balance||'')+'" id="n-balance-'+sid+'"/></div>';
+  html+='<div class="note-field"><label>Extras</label><input type="text" placeholder="Snorkel, kayak..." value="'+esc(n.extras||'')+'" id="n-extras-'+sid+'"/></div>';
+  html+='<div class="note-field"><label>Contactado</label><select id="n-contacted-'+sid+'"><option value="" '+((!n.contacted)?'selected':'')+'>-- Pendiente --</option><option value="si" '+((n.contacted==='si')?'selected':'')+'>Si, contactado</option><option value="reminder" '+((n.contacted==='reminder')?'selected':'')+'>Reminder enviado</option><option value="no_responde" '+((n.contacted==='no_responde')?'selected':'')+'>No responde</option></select></div>';
+  html+='<div class="note-field" style="grid-column:1/-1"><label>Peticiones / Comida</label><textarea placeholder="Tapas, Paella, alergias..." id="n-comment-'+sid+'">'+esc(n.comment||'')+'</textarea></div>';
+  html+='</div>';
+  html+='<div class="notes-footer"><span class="save-status" id="status-'+sid+'"></span><button class="btn-save" id="save-'+sid+'" onclick="saveNotes(\''+sid+'\',\''+esc(b.id)+'\')">Guardar notas</button></div>';
+  html+='</div></div>';
+  return html;
+}
+
+// ── Interactions ──────────────────────────────────────────────────────────────
+function setSearch(q){searchQuery=q;renderTomorrow();renderWeek();}
+function toggleCompact(){isCompact=!isCompact;renderTomorrow();renderWeek();}
+
+function openWaTemplate(eventId,ev){
+  ev.stopPropagation();
+  const b=allBookings.find(x=>x.id===eventId)||{};
+  const n=allNotes[eventId]||{};
+  const phone=n.phone||b.parsed?.phone||'';
+  const waNum=phone?buildWa(phone):'';
+  const tmpl=localStorage.getItem('vt_wa_template')||DEFAULT_WA_TEMPLATE;
+  const nombre=(b.parsed?.buyer||'').split(' ')[0]||'cliente';
+  const hora=formatTime(b.start);
+  const barco=n.boat||'--';
+  const pax=n.pax||b.parsed?.pax||'--';
+  const patron=n.skipper||'--';
+  const msg=tmpl.replace(/{nombre}/g,nombre).replace(/{hora}/g,hora).replace(/{barco}/g,barco).replace(/{pax}/g,pax).replace(/{patron}/g,patron);
+  document.getElementById('waTemplateText').value=tmpl;
+  const link=document.getElementById('waTemplateSendLink');
+  link.href='https://wa.me/'+waNum+'?text='+encodeURIComponent(msg);
+  document.getElementById('waTemplateModal').style.display='flex';
+}
+function closeWaTemplate(){document.getElementById('waTemplateModal').style.display='none';}
+function saveWaTemplate(){
+  const tmpl=document.getElementById('waTemplateText').value;
+  localStorage.setItem('vt_wa_template',tmpl);
+  closeWaTemplate();
+}
+
+function toggleFoodFields(el){
+  const card=el.closest('.booking-card');
+  if(!card)return;
+  const sid=card.id.replace('card-','');
+  const qty=document.getElementById('food-qty-'+sid);
+  if(!qty)return;
+  qty.style.display=el.value==='si'?'block':'none';
+}
+function toggleNotes(sid,eventId){
+  document.getElementById('notes-'+sid)?.classList.toggle('open');
+
+}
+function onPhoneInput(sid){const btn=document.getElementById('phonesave-'+sid);if(btn)btn.style.display='inline-flex';}
+function onPhoneBlur(sid){setTimeout(()=>{const btn=document.getElementById('phonesave-'+sid);if(btn&&document.activeElement!==btn)btn.style.display='none';},200);}
+async function savePhone(sid,eventId){
+  const inp=document.getElementById('phone-'+sid),btn=document.getElementById('phonesave-'+sid);
+  if(!inp)return;
+  btn.textContent='...';
+  try{
+    let phoneVal=inp.value.trim();
+    if(phoneVal.startsWith('00'))phoneVal='+'+phoneVal.slice(2);
+    inp.value=phoneVal;
+    const existing=allNotes[eventId]||{};
+    await upsertNote(eventId,{...existing,phone:phoneVal});
+    if(!allNotes[eventId])allNotes[eventId]={};
+    allNotes[eventId].phone=inp.value.trim();
+    btn.textContent='OK';btn.style.background='var(--success)';
+    setTimeout(()=>{btn.style.display='none';btn.textContent='Guardar';btn.style.background='';},1500);
+  }catch(err){btn.textContent='Error';setTimeout(()=>{btn.style.display='none';btn.textContent='Guardar';},2000);}
+}
+async function saveNotes(sid,eventId){
+  const btn=document.getElementById('save-'+sid),st=document.getElementById('status-'+sid);
+  btn.disabled=true;btn.textContent='Guardando...';if(st)st.textContent='';
+  const fields={
+    pax:document.getElementById('n-pax-'+sid)?.value||'',
+    food:document.getElementById('n-food-'+sid)?.value||'',
+    food_tapas:parseInt(document.getElementById('n-tapas-'+sid)?.value)||0,
+    food_fish:parseInt(document.getElementById('n-fish-'+sid)?.value)||0,
+    food_meat:parseInt(document.getElementById('n-meat-'+sid)?.value)||0,
+    food_veggie:parseInt(document.getElementById('n-veggie-'+sid)?.value)||0,
+    boat:document.getElementById('n-boat-'+sid)?.value||'',
+    skipper:document.getElementById('n-skipper-'+sid)?.value||'',
+    balance:parseFloat(document.getElementById('n-balance-'+sid)?.value)||null,
+    extras:document.getElementById('n-extras-'+sid)?.value||'',
+    contacted:document.getElementById('n-contacted-'+sid)?.value||'',
+    comment:document.getElementById('n-comment-'+sid)?.value||'',
+    phone:allNotes[eventId]?.phone||''
+  };
+  try{
+    await upsertNote(eventId,fields);allNotes[eventId]={...fields,event_id:eventId};
+
+    btn.textContent='Guardado';btn.classList.add('saved');if(st)st.textContent='Sincronizado';
+    setTimeout(()=>{btn.textContent='Guardar notas';btn.classList.remove('saved');btn.disabled=false;if(st)st.textContent='';},2500);
+    const dot=document.getElementById('dot-'+sid);if(dot)dot.className='status-dot '+(fields.contacted==='si'?'dot-done':'dot-pending');
+    const meta=document.querySelector('#card-'+sid+' .booking-meta');
+    if(meta){
+      const ev=allBookings.find(b=>b.id===eventId);
+      const pax=ev?.parsed?.pax||'',variant=ev?.parsed?.variant||'';
+      let chips='';
+      if(pax)chips+='<span class="meta-chip chip-pax">&#128101; '+esc(pax)+' pax</span>';
+      if(fields.boat)chips+='<span class="meta-chip chip-boat">&#128674; '+esc(fields.boat)+'</span>';
+      if(fields.skipper)chips+='<span class="meta-chip chip-type">&#128081; '+esc(fields.skipper)+'</span>';
+      if(variant)chips+='<span class="meta-chip chip-type">'+esc(variant)+'</span>';
+      meta.innerHTML=chips;
+    }
+  }catch(err){btn.textContent='Error';btn.disabled=false;if(st)st.textContent='Error: '+err.message;}
+}
+function copyText(text,btn){navigator.clipboard.writeText(text).then(()=>{btn.textContent='Copiado';btn.classList.add('done');setTimeout(()=>{btn.textContent='Copiar';btn.classList.remove('done');},2000);});}
+
+// ── History tab (with calendar picker) ─────────────────────────────────────────
+let historyDate=new Date();
+historyDate.setDate(historyDate.getDate()-1); // yesterday default
+
+function buildDateNav(dStr){
+  const{weekday,rest}=formatDateLabel(dStr);
+  return '<div class="date-nav"><button onclick="changeHistoryDate(-1)">&#8592;</button>'
+    +'<input type="date" class="date-picker-input" id="historyDatePicker" value="'+dStr+'" onchange="setHistoryDate(this.value)"/>'
+    +'<div class="current-date">'+rest+' &middot; '+weekday+'</div>'
+    +'<button onclick="changeHistoryDate(1)">&#8594;</button></div>';
+}
+
+async function renderHistory(){
+  const el=document.getElementById('view-history');
+  const dStr=toDateStr(historyDate);
+  el.innerHTML=buildDateNav(dStr)+'<div class="state-screen"><div class="icon spinning">&#8635;</div><h2>Cargando...</h2></div>';
+  try{
+    const[events,notesMap]=await Promise.all([loadEventsFromSupabase(dStr,dStr),loadAllNotes()]);
+    allNotes={...allNotes,...notesMap};
+    let html=buildDateNav(dStr);
+    if(!events.length){html+='<div class="state-screen"><div class="icon">&#127754;</div><h2>Sin reservas</h2><p>No hubo tours este dia.</p></div>';}
+    else{
+      const totalPax=events.reduce((s,b)=>s+(parseInt(b.parsed.pax)||0),0);
+      const totalBalance=events.reduce((s,b)=>s+(parseFloat(allNotes[b.id]?.balance)||0),0);
+      html+='<div class="top-bar"><div class="summary-bar"><div class="sum-item"><div class="sum-num">'+events.length+'</div><div class="sum-label">Tours</div></div><div class="sum-item"><div class="sum-num">'+(totalPax||'--')+'</div><div class="sum-label">Personas</div></div>'+(isAdmin&&totalBalance>0?'<div class="sum-item"><div class="sum-num sum-balance">'+totalBalance.toLocaleString('es-ES')+'&#8364;</div><div class="sum-label">Balance</div></div>':'')+'</div></div>';
+      for(const b of events)html+=renderCard(b);
+    }
+    el.innerHTML=html;
+  }catch(err){el.innerHTML='<div class="state-screen"><div class="icon">&#9888;</div><h2>Error</h2><p>'+esc(err.message)+'</p></div>';}
+}
+function changeHistoryDate(dir){historyDate.setDate(historyDate.getDate()+dir);renderHistory();}
+function setHistoryDate(dateStr){historyDate=new Date(dateStr+'T12:00:00');renderHistory();}
+
+// ── Payments tab ──────────────────────────────────────────────────────────────
+let paymentsDate=new Date(); // today default (today and past days allowed, not future)
+const pageLoadDateStr=toDateStr(new Date()); // date when the page was first loaded
+let paymentsBoatFilter='all', paymentsSkipperFilter='all', paymentsTimeFilter='all';
+
+function buildPaymentsFilterBar(){
+  let html='<div class="filter-bar">';
+  html+='<span class="filter-label">Barco:</span>';
+  html+='<button class="filter-chip '+(paymentsBoatFilter==='all'?'active':'')+'" onclick="setPaymentsBoatFilter(\'all\')">Todos</button>';
+  BOATS.forEach(b=>{html+='<button class="filter-chip '+(paymentsBoatFilter===b?'active':'')+'" onclick="setPaymentsBoatFilter(\''+b+'\')">'+b+'</button>';});
+  html+='<span class="filter-label" style="margin-left:8px">Patron:</span>';
+  html+='<select class="skipper-select" onchange="setPaymentsSkipperFilter(this.value)">';
+  html+='<option value="all" '+(paymentsSkipperFilter==='all'?'selected':'')+'>Todos</option>';
+  SKIPPERS.forEach(s=>{html+='<option value="'+s+'" '+(paymentsSkipperFilter===s?'selected':'')+'>'+s+'</option>';});
+  html+='</select>';
+  html+='<span class="filter-label" style="margin-left:8px">Horario:</span>';
+  html+='<button class="filter-chip '+(paymentsTimeFilter==='all'?'active':'')+'" onclick="setPaymentsTimeFilter(\'all\')">Todos</button>';
+  html+='<button class="filter-chip '+(paymentsTimeFilter==='morning'?'active':'')+'" onclick="setPaymentsTimeFilter(\'morning\')">&#9728;&#65039; Manana</button>';
+  html+='<button class="filter-chip '+(paymentsTimeFilter==='afternoon'?'active':'')+'" onclick="setPaymentsTimeFilter(\'afternoon\')">&#127749; Tarde</button>';
+  html+='</div>';
+  return html;
+}
+function setPaymentsBoatFilter(boat){paymentsBoatFilter=boat;renderPayments();}
+function setPaymentsSkipperFilter(skipper){paymentsSkipperFilter=skipper;renderPayments();}
+function setPaymentsTimeFilter(t){paymentsTimeFilter=t;renderPayments();}
+function filterPaymentsBookings(bookings){
+  return bookings.filter(b=>{
+    const n=allNotes[b.id]||{};
+    const boatOk=paymentsBoatFilter==='all'||(n.boat||'')===paymentsBoatFilter;
+    const skipperOk=paymentsSkipperFilter==='all'||(n.skipper||'')===paymentsSkipperFilter;
+    let timeOk=true;
+    if(paymentsTimeFilter!=='all'&&b.start){
+      const hour=new Date(b.start).getHours();
+      timeOk=paymentsTimeFilter==='morning'?hour<14:hour>=14;
+    }
+    return boatOk&&skipperOk&&timeOk;
+  });
+}
+
+function buildPaymentsDateNav(dStr){
+  const{weekday,rest}=formatDateLabel(dStr);
+  const todayStr=toDateStr(new Date());
+  const isBeforeToday=dStr<todayStr;
+  return '<div class="date-nav"><button onclick="changePaymentsDate(-1)">&#8592;</button>'
+    +'<input type="date" class="date-picker-input" id="paymentsDatePicker" value="'+dStr+'" max="'+todayStr+'" onchange="setPaymentsDate(this.value)"/>'
+    +'<div class="current-date">'+rest+' &middot; '+weekday+'</div>'
+    +'<button onclick="changePaymentsDate(1)" '+(isBeforeToday?'':'disabled')+'>&#8594;</button></div>';
+}
+
+async function renderPayments(){
+  const el=document.getElementById('view-payments');
+  const dStr=toDateStr(paymentsDate);
+  const scrollY=window.scrollY;
+  const hasContent=el.querySelector('.payment-card');
+  if(!hasContent)el.innerHTML=buildPaymentsDateNav(dStr)+buildPaymentsFilterBar()+'<div class="state-screen"><div class="icon spinning">&#8635;</div><h2>Cargando...</h2></div>';
+  try{
+    const[events,notesMap]=await Promise.all([loadEventsFromSupabase(dStr,dStr),loadAllNotes()]);
+    allNotes={...allNotes,...notesMap};
+    let html=buildPaymentsDateNav(dStr)+buildPaymentsFilterBar();
+    const filteredEvents=filterPaymentsBookings(events);
+    if(!filteredEvents.length){
+      html+='<div class="state-screen"><div class="icon">&#127754;</div><h2>Sin charters</h2><p>'+(events.length?'No hay charters con estos filtros.':'No hubo tours este dia.')+'</p></div>';
+      el.innerHTML=html;
+      window.scrollTo(0,scrollY);
+      return;
+    }
+    const sorted=filteredEvents.slice().sort((a,b)=>{if(!a.start)return 1;if(!b.start)return -1;return new Date(a.start)-new Date(b.start);});
+
+    if(isAdmin){
+      const totalBalance=sorted.reduce((s,b)=>s+(parseFloat(allNotes[b.id]?.balance)||0),0);
+
+      // Helper: amount attributed to a given payment method for a booking, accounting for splits
+      function amountFor(b,method){
+        const n=allNotes[b.id]||{};
+        const m1=n.payment_method,m2=n.payment_method_2;
+        const bal=parseFloat(n.balance)||0;
+        if(m1===method&&m2){return parseFloat(n.payment_amount_1)||0;}
+        if(m2===method){return parseFloat(n.payment_amount_2)||0;}
+        if(m1===method&&!m2){return bal;}
+        return 0;
+      }
+      const methodTotal=method=>sorted.reduce((s,b)=>s+amountFor(b,method),0);
+      const bbva=methodTotal('tpv_bbva');
+      const santander=methodTotal('tpv_santander');
+      const btp=methodTotal('tpv_btp');
+      const cash=methodTotal('cash');
+      const cashPending=sorted.filter(b=>{const n=allNotes[b.id]||{};return(n.payment_method==='cash'||n.payment_method_2==='cash')&&!n.cash_delivered;}).length;
+
+      html+='<div class="top-bar"><div class="summary-bar">';
+      html+='<div class="sum-item"><div class="sum-num">'+sorted.length+'</div><div class="sum-label">Charters</div></div>';
+      html+='<div class="sum-item"><div class="sum-num sum-balance">'+totalBalance.toLocaleString('es-ES')+'&#8364;</div><div class="sum-label">Total</div></div>';
+      if(bbva>0)html+='<div class="sum-item"><div class="sum-num" style="color:#1464A5">'+bbva.toLocaleString('es-ES')+'&#8364;</div><div class="sum-label">TPV BBVA</div></div>';
+      if(santander>0)html+='<div class="sum-item"><div class="sum-num" style="color:#EC0000">'+santander.toLocaleString('es-ES')+'&#8364;</div><div class="sum-label">TPV Santander</div></div>';
+      if(btp>0)html+='<div class="sum-item"><div class="sum-num" style="color:#f97316">'+btp.toLocaleString('es-ES')+'&#8364;</div><div class="sum-label">TPV BTP</div></div>';
+      if(cash>0)html+='<div class="sum-item"><div class="sum-num" style="color:var(--success)">'+cash.toLocaleString('es-ES')+'&#8364;</div><div class="sum-label">Cash</div></div>';
+      if(cashPending>0)html+='<div class="sum-item"><div class="sum-num" style="color:var(--danger)">'+cashPending+'</div><div class="sum-label">Cash pendiente</div></div>';
+      html+='</div></div>';
+    }
+
+    for(const b of sorted)html+=renderPaymentCard(b);
+    el.innerHTML=html;
+    window.scrollTo(0,scrollY);
+  }catch(err){el.innerHTML='<div class="state-screen"><div class="icon">&#9888;</div><h2>Error</h2><p>'+esc(err.message)+'</p></div>';}
+}
+
+function renderPaymentCard(b){
+  const n=allNotes[b.id]||{};
+  const sid=esc(b.id);
+  const boat=n.boat||'--';
+  const skipper=n.skipper||'--';
+  const balanceNum=parseFloat(n.balance)||0;
+  const balance=n.balance?balanceNum.toLocaleString('es-ES')+'€':'--';
+  const method1=n.payment_method||'';
+  const method2=n.payment_method_2||'';
+  const delivered=!!n.cash_delivered;
+  const rating=parseInt(n.rating)||0;
+  const phone=n.phone||b.parsed.phone||'';
+  const flag=getFlag(phone);
+  const tapas=parseInt(n.food_tapas)||0,fish=parseInt(n.food_fish)||0,meat=parseInt(n.food_meat)||0,veggie=parseInt(n.food_veggie)||0;
+  let foodIcon='';
+  if(n.food==='no')foodIcon='&#10060;';
+  else if(tapas>0||fish>0||meat>0||veggie>0){
+    const parts=[];
+    if(tapas>0)foodIcon+='&#127860;';
+    if(fish>0)foodIcon+='&#128031;';
+    if(meat>0)foodIcon+='&#129385;';
+    if(veggie>0)foodIcon+='&#129382;';
+  }
+
+  const clientName=n.client_name||b.parsed.buyer||'';
+
+  let html='<div class="booking-card payment-card" id="paycard-'+sid+'">';
+  html+='<div class="card-top">';
+  html+='<div class="time-col"><div class="time-big">'+formatTime(b.start)+'</div><div class="time-end">'+formatTime(b.end)+'</div></div>';
+  html+='<div class="divider-v"></div>';
+  html+='<div class="info-col">';
+  if(isAdmin){
+    html+='<div class="booking-title client-name-row">'+(flag?flag+' ':'&#129489; ')
+      +'<input class="client-name-input" id="clientname-'+sid+'" value="'+esc(clientName)+'" placeholder="Nombre del cliente" oninput="onClientNameInput(\''+sid+'\')" onblur="onClientNameBlur(\''+sid+'\')" onclick="event.stopPropagation()"/>'
+      +'<button class="btn-phone-save" id="clientnamesave-'+sid+'" onclick="saveClientName(\''+sid+'\',\''+esc(b.id)+'\')">Guardar</button>'
+      +'</div>';
+  }else{
+    html+='<div class="booking-title">'+(flag?flag+' ':'&#129489; ')+esc(clientName||'Sin nombre')+'</div>';
+  }
+  html+='<div class="pay-amount-big">&#128176; <span>'+balance+'</span></div>';
+  html+='<div class="booking-meta">';
+  if(b.parsed.pax)html+='<span class="meta-chip chip-pax">&#128101; '+esc(b.parsed.pax)+' pax</span>';
+  html+='<span class="meta-chip chip-boat">&#128674; '+esc(boat)+'</span>';
+  html+='<span class="meta-chip chip-type">&#128081; '+esc(skipper)+'</span>';
+  if(foodIcon)html+='<span class="meta-chip chip-type">'+foodIcon+'</span>';
+  html+='</div></div>';
+  // Review row
+  const reviewYesActive=rating===3?'active-yes':'';
+  const reviewNoActive=rating===1?'active-no':'';
+  html+='<div class="review-row">';
+  html+='<span class="review-label">Review</span>';
+  html+='<button class="review-btn '+reviewYesActive+'" onclick="setRating(\''+sid+'\',\''+esc(b.id)+'\',3)">Sí</button>';
+  html+='<button class="review-btn '+reviewNoActive+'" onclick="setRating(\''+sid+'\',\''+esc(b.id)+'\',1)">No</button>';
+  html+='</div>';
+  html+='</div>';
+
+  // Payment method selector - RunWild and Jaleo only have Cash + TPV BTP
+  const isBtpBoat=boat==='RunWild'||boat==='Jaleo';
+  const methodOptions=isBtpBoat?['tpv_btp','cash']:['tpv_bbva','tpv_santander','cash'];
+  const labels={tpv_bbva:'&#128179; TPV BBVA',tpv_santander:'&#128179; TPV Santander',tpv_btp:'&#128179; TPV BTP',cash:'&#128181; Cash'};
+  const activeMethods=[method1,method2].filter(Boolean);
+  const isSplit=activeMethods.length===2;
+
+  html+='<div class="payment-controls">';
+  html+='<div class="payment-method-row">';
+  methodOptions.forEach(m=>{
+    const isActive=activeMethods.includes(m);
+    html+='<button class="payment-method-btn '+(isActive?'active method-'+m:'')+'" onclick="togglePaymentMethod(\''+sid+'\',\''+esc(b.id)+'\',\''+m+'\')">'+labels[m]+'</button>';
+  });
+  html+='</div>';
+
+  if(isSplit){
+    const amt1=n.payment_amount_1!=null?n.payment_amount_1:'';
+    const amt2=n.payment_amount_2!=null?n.payment_amount_2:'';
+    html+='<div class="split-payment-row">';
+    html+='<div class="split-amount-field"><label>'+labels[method1].replace(/&#\d+;/,'')+'</label><input type="number" min="0" step="0.01" placeholder="0.00" value="'+esc(amt1)+'" onchange="setSplitAmount(\''+sid+'\',\''+esc(b.id)+'\',1,this.value)"/></div>';
+    html+='<div class="split-amount-field"><label>'+labels[method2].replace(/&#\d+;/,'')+'</label><input type="number" min="0" step="0.01" placeholder="0.00" value="'+esc(amt2)+'" onchange="setSplitAmount(\''+sid+'\',\''+esc(b.id)+'\',2,this.value)"/></div>';
+    const sumAmt=(parseFloat(amt1)||0)+(parseFloat(amt2)||0);
+    const diff=balanceNum-sumAmt;
+    html+='<div class="split-amount-total '+(Math.abs(diff)<0.01?'ok':'warn')+'">Suma: '+sumAmt.toLocaleString('es-ES')+'&#8364; '+(Math.abs(diff)<0.01?'&#10003;':'(falta '+diff.toLocaleString('es-ES')+'&#8364;)')+'</div>';
+    html+='</div>';
+  }
+
+  if(activeMethods.includes('cash')){
+    html+='<label class="cash-delivered-check"><input type="checkbox" '+(delivered?'checked':'')+' onchange="setCashDelivered(\''+sid+'\',\''+esc(b.id)+'\',this.checked)"/> Entregado</label>';
+  }
+  html+='</div>';
+
+  html+='</div>';
+  return html;
+}
+
+function changePaymentsDate(dir){
+  const newDate=new Date(paymentsDate);
+  newDate.setDate(newDate.getDate()+dir);
+  const todayStr=toDateStr(new Date());
+  if(toDateStr(newDate)>todayStr)return; // allow today, never future
+  paymentsDate=newDate;
+  renderPayments();
+}
+function setPaymentsDate(dateStr){
+  const todayStr=toDateStr(new Date());
+  if(dateStr>todayStr)return;
+  paymentsDate=new Date(dateStr+'T12:00:00');
+  renderPayments();
+}
+
+async function togglePaymentMethod(sid,eventId,method){
+  const existing=allNotes[eventId]||{};
+  let m1=existing.payment_method||null;
+  let m2=existing.payment_method_2||null;
+
+  if(m1===method){
+    // Clicking the already-active primary method removes it, promote m2 to m1
+    m1=m2;m2=null;
+  }else if(m2===method){
+    // Clicking the already-active secondary method removes it
+    m2=null;
+  }else if(!m1){
+    m1=method;
+  }else if(!m2){
+    m2=method;
+  }else{
+    // Both slots full and clicking a third different method - replace m2
+    m2=method;
+  }
+
+  const fields={
+    payment_method:m1,
+    payment_method_2:m2,
+    cash_delivered:(m1==='cash'||m2==='cash')?(existing.cash_delivered||false):false,
+    payment_amount_1:(m1&&m2)?(existing.payment_amount_1??null):null,
+    payment_amount_2:(m1&&m2)?(existing.payment_amount_2??null):null
+  };
+  try{
+    await upsertNote(eventId,{...existing,...fields});
+    allNotes[eventId]={...existing,...fields};
+    renderPayments();
+  }catch(err){alert('Error guardando metodo de pago: '+err.message);}
+}
+
+async function setSplitAmount(sid,eventId,slot,value){
+  const existing=allNotes[eventId]||{};
+  const field=slot===1?'payment_amount_1':'payment_amount_2';
+  const val=value===''?null:parseFloat(value);
+  try{
+    await upsertNote(eventId,{...existing,[field]:val});
+    allNotes[eventId]={...existing,[field]:val};
+    renderPayments();
+  }catch(err){alert('Error guardando importe: '+err.message);}
+}
+
+async function setCashDelivered(sid,eventId,checked){
+  const existing=allNotes[eventId]||{};
+  try{
+    await upsertNote(eventId,{...existing,cash_delivered:checked});
+    allNotes[eventId]={...existing,cash_delivered:checked};
+  }catch(err){alert('Error guardando estado de entrega: '+err.message);}
+}
+
+async function setRating(sid,eventId,stars){
+  const existing=allNotes[eventId]||{};
+  const newRating=existing.rating===stars?null:stars; // toggle off if clicking same value
+
+  // Sí (stars===3) triggers a confirmation
+  if(stars===3&&newRating===3){
+    const confirmed=confirm('¿Confirmas que debemos pedir review al cliente de este tour?');
+    if(!confirmed)return;
+  }
+
+  try{
+    await upsertNote(eventId,{...existing,rating:newRating});
+    allNotes[eventId]={...existing,rating:newRating};
+    renderPayments();
+  }catch(err){alert('Error guardando valoracion: '+err.message);}
+}
+
+function onClientNameInput(sid){
+  const btn=document.getElementById('clientnamesave-'+sid);
+  if(btn)btn.style.display='inline-flex';
+}
+function onClientNameBlur(sid){
+  setTimeout(()=>{
+    const btn=document.getElementById('clientnamesave-'+sid);
+    if(btn&&document.activeElement!==btn)btn.style.display='none';
+  },200);
+}
+async function saveClientName(sid,eventId){
+  const inp=document.getElementById('clientname-'+sid),btn=document.getElementById('clientnamesave-'+sid);
+  if(!inp)return;
+  btn.textContent='...';
+  try{
+    const existing=allNotes[eventId]||{};
+    const newName=inp.value.trim();
+    await upsertNote(eventId,{...existing,client_name:newName});
+    allNotes[eventId]={...existing,client_name:newName};
+    btn.textContent='OK';btn.style.background='var(--success)';
+    setTimeout(()=>{btn.style.display='none';btn.textContent='Guardar';btn.style.background='';},1500);
+  }catch(err){btn.textContent='Error';setTimeout(()=>{btn.style.display='none';btn.textContent='Guardar';},2000);}
+}
+
+// ── Stats tab ─────────────────────────────────────────────────────────────────
+let statsRangeStart=null, statsRangeEnd=null;
+function getDefaultStatsRange(){
+  const end=new Date();
+  const start=new Date();start.setDate(start.getDate()-30);
+  return{start:toDateStr(start),end:toDateStr(end)};
+}
+async function renderStats(){
+  const el=document.getElementById('view-stats');
+  if(!statsRangeStart||!statsRangeEnd){const d=getDefaultStatsRange();statsRangeStart=d.start;statsRangeEnd=d.end;}
+  el.innerHTML=buildStatsControls()+'<div class="state-screen"><div class="icon spinning">&#8635;</div><h2>Cargando estadisticas...</h2></div>';
+  try{
+    const[events,notesMap]=await Promise.all([loadEventsFromSupabase(statsRangeStart,statsRangeEnd),loadAllNotes()]);
+    const notes=notesMap;
+    let html=buildStatsControls();
+
+    if(!events.length){
+      html+='<div class="state-screen"><div class="icon">&#128202;</div><h2>Sin datos</h2><p>No hay reservas en este periodo.</p></div>';
+      el.innerHTML=html;
+      return;
+    }
+
+    const totalPax=events.reduce((s,b)=>s+(parseInt(b.parsed.pax)||0),0);
+    const totalBalance=events.reduce((s,b)=>s+(parseFloat(notes[b.id]?.balance)||0),0);
+    const totalTapas=events.reduce((s,b)=>s+(parseInt(notes[b.id]?.food_tapas)||0),0);
+    const totalFish=events.reduce((s,b)=>s+(parseInt(notes[b.id]?.food_fish)||0),0);
+    const totalMeat=events.reduce((s,b)=>s+(parseInt(notes[b.id]?.food_meat)||0),0);
+    const totalVeggie=events.reduce((s,b)=>s+(parseInt(notes[b.id]?.food_veggie)||0),0);
+
+    // Overall summary
+    html+='<div class="stats-grid">';
+    html+=statCard(events.length,'Tours totales','&#9981;');
+    html+=statCard(totalPax,'Personas','&#128101;');
+    html+=statCard(totalBalance.toLocaleString('es-ES')+'&#8364;','Balance total','&#128176;');
+    html+=statCard(totalTapas+totalFish+totalMeat+totalVeggie,'Comidas servidas','&#127860;');
+    html+='</div>';
+
+    // By boat
+    const byBoat={};
+    for(const b of events){const boat=notes[b.id]?.boat||'Sin asignar';if(!byBoat[boat])byBoat[boat]={count:0,pax:0,balance:0};byBoat[boat].count++;byBoat[boat].pax+=parseInt(b.parsed.pax)||0;byBoat[boat].balance+=parseFloat(notes[b.id]?.balance)||0;}
+    html+='<div class="stats-section"><h3>Por barco</h3><div class="stats-table">';
+    for(const[boat,d]of Object.entries(byBoat).sort((a,b)=>b[1].count-a[1].count)){
+      html+='<div class="stats-row"><span class="stats-row-label">&#128674; '+esc(boat)+'</span><span>'+d.count+' tours</span><span>'+d.pax+' pax</span><span class="stats-row-balance">'+d.balance.toLocaleString('es-ES')+'&#8364;</span></div>';
+    }
+    html+='</div></div>';
+
+    // By skipper
+    const bySkipper={};
+    for(const b of events){const sk=notes[b.id]?.skipper||'Sin asignar';if(!bySkipper[sk])bySkipper[sk]={count:0,pax:0};bySkipper[sk].count++;bySkipper[sk].pax+=parseInt(b.parsed.pax)||0;}
+    html+='<div class="stats-section"><h3>Por patron</h3><div class="stats-table">';
+    for(const[sk,d]of Object.entries(bySkipper).sort((a,b)=>b[1].count-a[1].count)){
+      html+='<div class="stats-row"><span class="stats-row-label">&#128081; '+esc(sk)+'</span><span>'+d.count+' tours</span><span>'+d.pax+' pax</span></div>';
+    }
+    html+='</div></div>';
+
+    // Weekly breakdown
+    const byWeek={};
+    for(const b of events){
+      const d=new Date(b.date+'T12:00:00');
+      const weekStart=new Date(d);weekStart.setDate(d.getDate()-d.getDay()+1);
+      const wKey=toDateStr(weekStart);
+      if(!byWeek[wKey])byWeek[wKey]={count:0,pax:0,balance:0};
+      byWeek[wKey].count++;byWeek[wKey].pax+=parseInt(b.parsed.pax)||0;byWeek[wKey].balance+=parseFloat(notes[b.id]?.balance)||0;
+    }
+    html+='<div class="stats-section"><h3>Por semana</h3><div class="stats-table">';
+    for(const[wk,d]of Object.entries(byWeek).sort((a,b)=>a[0]<b[0]?1:-1)){
+      const{rest}=formatDateLabel(wk);
+      html+='<div class="stats-row"><span class="stats-row-label">&#128197; Semana del '+rest+'</span><span>'+d.count+' tours</span><span>'+d.pax+' pax</span><span class="stats-row-balance">'+d.balance.toLocaleString('es-ES')+'&#8364;</span></div>';
+    }
+    html+='</div></div>';
+
+    el.innerHTML=html;
+  }catch(err){el.innerHTML='<div class="state-screen"><div class="icon">&#9888;</div><h2>Error</h2><p>'+esc(err.message)+'</p></div>';}
+}
+function statCard(num,label,icon){
+  return '<div class="stat-card"><div class="stat-icon">'+icon+'</div><div class="stat-num">'+num+'</div><div class="stat-label">'+label+'</div></div>';
+}
+function buildStatsControls(){
+  return '<div class="stats-controls"><label>Desde</label><input type="date" value="'+statsRangeStart+'" onchange="setStatsStart(this.value)"/>'
+    +'<label>Hasta</label><input type="date" value="'+statsRangeEnd+'" onchange="setStatsEnd(this.value)"/>'
+    +'<button class="btn btn-blue" onclick="renderStats()">&#8635; Actualizar</button></div>';
+}
+function setStatsStart(v){statsRangeStart=v;}
+function setStatsEnd(v){statsRangeEnd=v;}
+
+// ── Export ────────────────────────────────────────────────────────────────────
+function showExport(){
+  const tom=new Date();tom.setDate(tom.getDate()+1);
+  const tStr=toDateStr(tom);
+  const dayBookings=filterBookings(allBookings.filter(b=>b.date===tStr));
+  if(!dayBookings.length){alert('No hay reservas para manana.');return;}
+  const weekdays=['Domingo','Lunes','Martes','Miercoles','Jueves','Viernes','Sabado'];
+  const months=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  const d=new Date(tStr+'T12:00:00');
+  let text='*'+weekdays[d.getDay()]+' '+d.getDate()+' '+months[d.getMonth()]+'*\n\n';
+  for(let i=0;i<dayBookings.length;i++){
+    const b=dayBookings[i],n=allNotes[b.id]||{},p=b.parsed;
+    const phone=n.phone||p.phone||'';
+    const flag=getFlag(phone);
+    const time=formatTime(b.start);
+    const boat=n.boat||'--';
+    const pax=parseInt(n.pax||p.pax)||0;
+    const balance=n.balance?n.balance+'€':'--';
+    const skipper=n.skipper?n.skipper.toUpperCase():'--';
+    const tapas=parseInt(n.food_tapas)||0;
+    const fish=parseInt(n.food_fish)||0;
+    const meat=parseInt(n.food_meat)||0;
+    const veggie=parseInt(n.food_veggie)||0;
+    if(i>0)text+='\n';
+    // Line 1: boat, time, pax, skipper, flag
+    text+='⛵ *'+boat+'* '+time+' → '+pax+'pax · 👤'+skipper+' '+flag+'\n';
+    // Line 2: food + comment + extras + balance
+    const foodParts=[];
+    if(tapas>0)foodParts.push((tapas!==pax?tapas+'x ':'')+' Tapas');
+    if(fish>0)foodParts.push((fish!==pax?fish+'x ':'')+' Fish Paella');
+    if(meat>0)foodParts.push((meat!==pax?meat+'x ':'')+' Meat Paella');
+    if(veggie>0)foodParts.push((veggie!==pax?veggie+'x ':'')+' Veggie Paella');
+    const line2parts=[];
+    if(foodParts.length>0)line2parts.push(foodParts.join('+'));
+    if(n.comment)line2parts.push(n.comment);
+    if(n.extras)line2parts.push(n.extras);
+    line2parts.push('💰'+balance);
+    text+=line2parts.join(' · ')+'\n';
+  }
+  document.getElementById('exportText').textContent=text;
+  document.getElementById('exportModal').style.display='flex';
+}
+function closeExport(){document.getElementById('exportModal').style.display='none';}
+function copyExport(){
+  const text=document.getElementById('exportText').textContent;
+  navigator.clipboard.writeText(text).then(()=>{
+    const btn=event.target;btn.textContent='Copiado!';
+    setTimeout(()=>btn.textContent='Copiar',2000);
+  });
+}
+
+// ── Arreglos tab ──────────────────────────────────────────────────────────────
+let allArreglos=[];
+
+async function loadArreglos(){
+  const{data,error}=await sb.from('arreglos').select('*').order('created_at');
+  if(error)throw error;
+  allArreglos=data||[];
+}
+
+async function addArreglo(boat){
+  const inputEl=document.getElementById('arr-input-'+boat);
+  const text=(inputEl.value||'').trim();
+  if(!text)return;
+  inputEl.disabled=true;
+  try{
+    const{data,error}=await sb.from('arreglos').insert({barco:boat,descripcion:text}).select().single();
+    if(error)throw error;
+    allArreglos.push(data);
+    inputEl.value='';
+    renderArreglos();
+  }catch(err){alert('Error al añadir: '+err.message);}
+  finally{inputEl.disabled=false;}
+}
+
+async function deleteArreglo(id){
+  if(!confirm('¿Marcar como realizado y eliminar?'))return;
+  try{
+    const{error}=await sb.from('arreglos').delete().eq('id',id);
+    if(error)throw error;
+    allArreglos=allArreglos.filter(a=>a.id!==id);
+    renderArreglos();
+  }catch(err){alert('Error al eliminar: '+err.message);}
+}
+
+async function renderArreglos(){
+  const el=document.getElementById('view-arreglos');
+  el.innerHTML='<div class="state-screen"><div class="icon spinning">&#8635;</div><h2>Cargando...</h2></div>';
+  try{await loadArreglos();}catch(err){
+    el.innerHTML='<div class="state-screen"><div class="icon">&#9888;</div><h2>Error</h2><p>'+esc(err.message)+'</p></div>';
+    return;
+  }
+
+  // Tab badge (total)
+  const total=allArreglos.length;
+  const tabEl=document.getElementById('tab-arreglos');
+  tabEl.innerHTML='&#128295; Arreglos'+(total>0?' <span style="background:var(--danger);color:#fff;border-radius:20px;padding:1px 7px;font-size:0.7rem;font-weight:700;vertical-align:middle">'+total+'</span>':'');
+
+  // Summary bar
+  let html='<div class="arreglos-summary">';
+  for(const boat of BOATS){
+    const count=allArreglos.filter(a=>a.barco===boat).length;
+    html+='<div class="arreglos-summary-item">'+esc(boat)+' <span class="arr-badge'+(count===0?' ok':'')+'">'+(count===0?'OK':count)+'</span></div>';
+  }
+  html+='</div>';
+
+  // Boat sections
+  for(const boat of BOATS){
+    const items=allArreglos.filter(a=>a.barco===boat);
+    const count=items.length;
+    html+='<div class="boat-section">';
+    html+='<div class="boat-header"><span class="boat-title">&#9973; '+esc(boat)+'</span><span class="boat-count'+(count===0?' zero':'')+'">'+count+' pendiente'+(count!==1?'s':'')+'</span></div>';
+    if(items.length){
+      for(const item of items){
+        const d=new Date(item.created_at);
+        const dateStr=d.toLocaleDateString('es-ES',{day:'numeric',month:'short'})+' '+d.toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'});
+        html+='<div class="arreglo-item">';
+        html+='<div style="flex:1"><div class="arreglo-text">'+esc(item.descripcion)+'</div><div class="arreglo-date">'+dateStr+'</div></div>';
+        html+='<button class="arreglo-del" onclick="deleteArreglo(\''+item.id+'\')" title="Marcar como realizado">&#10003; Hecho</button>';
+        html+='</div>';
+      }
+    }else{
+      html+='<p style="font-size:0.85rem;color:var(--muted);margin:4px 0 10px">Sin arreglos pendientes &#10003;</p>';
+    }
+    html+='<div class="arreglo-add"><input id="arr-input-'+esc(boat)+'" type="text" placeholder="Describir arreglo necesario..." onkeydown="if(event.key===\'Enter\')addArreglo(\''+esc(boat)+'\')"/><button class="btn btn-blue" onclick="addArreglo(\''+esc(boat)+'\')">+ A&ntilde;adir</button></div>';
+    html+='</div>';
+  }
+
+  el.innerHTML=html;
+}
+
+// ── Compras tab ───────────────────────────────────────────────────────────────
+const TIENDAS=['Mercadona','Chino','Tienda Náutica','Otros'];
+let allCompras=[];
+
+async function loadCompras(){
+  const{data,error}=await sb.from('compras').select('*').order('created_at');
+  if(error)throw error;
+  allCompras=data||[];
+}
+
+async function addCompra(tienda){
+  const inputEl=document.getElementById('compra-input-'+tienda);
+  const text=(inputEl.value||'').trim();
+  if(!text)return;
+  inputEl.disabled=true;
+  try{
+    const{data,error}=await sb.from('compras').insert({tienda,descripcion:text}).select().single();
+    if(error)throw error;
+    allCompras.push(data);
+    inputEl.value='';
+    renderCompras();
+  }catch(err){alert('Error al añadir: '+err.message);}
+  finally{inputEl.disabled=false;}
+}
+
+async function deleteCompra(id){
+  try{
+    const{error}=await sb.from('compras').delete().eq('id',id);
+    if(error)throw error;
+    allCompras=allCompras.filter(c=>c.id!==id);
+    renderCompras();
+  }catch(err){alert('Error al eliminar: '+err.message);}
+}
+
+async function renderCompras(){
+  const el=document.getElementById('view-compras');
+  el.innerHTML='<div class="state-screen"><div class="icon spinning">&#8635;</div><h2>Cargando...</h2></div>';
+  try{await loadCompras();}catch(err){
+    el.innerHTML='<div class="state-screen"><div class="icon">&#9888;</div><h2>Error</h2><p>'+esc(err.message)+'</p></div>';
+    return;
+  }
+
+  let html='';
+  for(const tienda of TIENDAS){
+    const items=allCompras.filter(c=>c.tienda===tienda);
+    const iconos={'Mercadona':'&#128722;','Chino':'&#127982;','Tienda Náutica':'&#9875;','Otros':'&#128717;'};
+    html+='<div class="boat-section">';
+    html+='<div class="boat-header"><span class="boat-title">'+(iconos[tienda]||'&#128722;')+' '+esc(tienda)+'</span></div>';
+    if(items.length){
+      for(const item of items){
+        html+='<div class="arreglo-item">';
+        html+='<div style="flex:1"><div class="arreglo-text">'+esc(item.descripcion)+'</div></div>';
+        html+='<button class="arreglo-del" onclick="deleteCompra(\''+item.id+'\')" title="Eliminar">&#10005;</button>';
+        html+='</div>';
+      }
+    }else{
+      html+='<p style="font-size:0.85rem;color:var(--muted);margin:4px 0 10px">Sin productos en la lista</p>';
+    }
+    html+='<div class="arreglo-add"><input id="compra-input-'+esc(tienda)+'" type="text" placeholder="A&ntilde;adir producto..." onkeydown="if(event.key===\'Enter\')addCompra(\''+esc(tienda)+'\')"/><button class="btn btn-blue" onclick="addCompra(\''+esc(tienda)+'\')">+ A&ntilde;adir</button></div>';
+    html+='</div>';
+  }
+  el.innerHTML=html;
+}
+
+// ── UI ────────────────────────────────────────────────────────────────────────
+function switchTab(tab){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('tab-'+tab).classList.add('active');
+  ['today','tomorrow','week','history','payments','stats','arreglos','compras'].forEach(v=>{document.getElementById('view-'+v).style.display=v===tab?'block':'none';});
+  if(tab==='history')renderHistory();
+  if(tab==='payments'){
+    const realToday=new Date();
+    // If the calendar day has rolled over since the page was loaded, and the date shown
+    // still matches the stale "today" from page-load, snap forward to the real today
+    if(toDateStr(paymentsDate)===pageLoadDateStr && toDateStr(realToday)!==pageLoadDateStr){
+      paymentsDate=realToday;
+    }
+    renderPayments();
+  }
+  if(tab==='stats')renderStats();
+  if(tab==='arreglos')renderArreglos();
+  if(tab==='compras')renderCompras();
+}
+function showLogin(){document.getElementById('loginScreen').style.display='flex';document.getElementById('appContent').style.display='none';document.getElementById('tabBar').style.display='none';document.getElementById('btnSync').style.display='none';document.getElementById('btnRefresh').style.display='none';document.getElementById('btnEmployeeView').style.display='none';document.getElementById('btnLogout').style.display='none';}
+function showApp(admin){
+  document.getElementById('loginScreen').style.display='none';
+  document.getElementById('appContent').style.display='block';
+  if(isPaymentsOnly){
+    // Show tabBar but only Pagos + Arreglos tabs
+    document.getElementById('tabBar').style.display='flex';
+    ['today','tomorrow','week','history','stats'].forEach(t=>{document.getElementById('tab-'+t).style.display='none';});
+    document.getElementById('btnRefresh').style.display='inline-flex';
+  }else{
+    document.getElementById('tabBar').style.display='flex';
+    document.getElementById('btnRefresh').style.display='inline-flex';
+    if(admin||isAdmin){document.getElementById('btnSync').style.display='inline-flex';document.getElementById('btnEmployeeView').style.display='inline-flex';document.getElementById('btnLogout').style.display='inline-flex';}
+  }
+}
+function showLoading(msg){['tomorrow','week'].forEach(v=>{document.getElementById('view-'+v).innerHTML='<div class="state-screen"><div class="icon spinning">&#8635;</div><h2>'+(msg||'Cargando...')+'</h2></div>';});}
+function showError(msg){['tomorrow','week'].forEach(v=>{document.getElementById('view-'+v).innerHTML='<div class="state-screen"><div class="icon">&#9888;</div><h2>Error</h2><p>'+esc(msg)+'</p></div>';});}
+
+document.getElementById('todayBadge').textContent=new Date().toLocaleDateString('es-ES',{weekday:'short',day:'numeric',month:'short'}).toUpperCase();
+updateSyncInfo();
+
+(async function init(){
+  const params=new URLSearchParams(window.location.search);
+  const code=params.get('code'),error=params.get('error');
+  if(isAdmin){
+    if(error){showLogin();alert('Error Google: '+error);return;}
+    if(code){await handleCallback(code);return;}
+    if(loadToken()){showApp(true);await syncCalendar();startAutoSync();}
+    else showLogin();
+  }else{
+    showApp(false);
+    await loadFromSupabase();
+    if(isPaymentsOnly){
+      document.getElementById('view-payments').style.display='block';
+      document.getElementById('tab-payments').classList.add('active');
+      renderPayments();
+    }
+  }
+})();
+</script>
+</body>
+</html>
