@@ -362,7 +362,7 @@
   <div class="tab" onclick="switchTab('stats')" id="tab-stats">&#128202; Estadisticas</div>
   <div class="tab" onclick="switchTab('arreglos')" id="tab-arreglos">&#128295; Arreglos</div>
   <div class="tab" onclick="switchTab('compras')" id="tab-compras">&#128722; Compras</div>
-  <div class="tab" onclick="switchTab('historial')" id="tab-historial">&#128218; Historial</div>
+  <div class="tab" onclick="switchTab('historial')" id="tab-historial">&#128295; Reparacion</div>
 </div>
 <main>
   <!-- Contract modal -->
@@ -551,16 +551,42 @@ function updateSyncInfo(){
 // ── Auth ──────────────────────────────────────────────────────────────────────
 let accessToken=null,tokenExpiry=0;
 function getRedirectUri(){return window.location.href.split('?')[0].split('#')[0];}
-function saveToken(t,exp){accessToken=t;tokenExpiry=Date.now()+(exp-60)*1000;try{sessionStorage.setItem('vt_token',t);sessionStorage.setItem('vt_expiry',tokenExpiry);}catch(e){}}
-function loadToken(){try{const t=sessionStorage.getItem('vt_token'),e=parseInt(sessionStorage.getItem('vt_expiry')||'0');if(t&&Date.now()<e){accessToken=t;tokenExpiry=e;return true;}}catch(e){}return false;}
-function clearToken(){accessToken=null;tokenExpiry=0;try{sessionStorage.removeItem('vt_token');sessionStorage.removeItem('vt_expiry');}catch(e){}}
+function saveToken(t,exp,refresh){
+  accessToken=t;tokenExpiry=Date.now()+(exp-60)*1000;
+  try{
+    localStorage.setItem('vt_token',t);
+    localStorage.setItem('vt_expiry',tokenExpiry);
+    if(refresh)localStorage.setItem('vt_refresh',refresh);
+  }catch(e){}
+}
+function loadToken(){
+  try{
+    const t=localStorage.getItem('vt_token'),e=parseInt(localStorage.getItem('vt_expiry')||'0');
+    if(t&&Date.now()<e){accessToken=t;tokenExpiry=e;return true;}
+  }catch(e){}
+  return false;
+}
+function clearToken(){
+  accessToken=null;tokenExpiry=0;
+  try{['vt_token','vt_expiry','vt_refresh'].forEach(k=>localStorage.removeItem(k));}catch(e){}
+}
+async function tryRefreshToken(){
+  const refresh=localStorage.getItem('vt_refresh');
+  if(!refresh)return false;
+  try{
+    const r=await fetch('https://oauth2.googleapis.com/token',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({client_id:CLIENT_ID,client_secret:CLIENT_SECRET,refresh_token:refresh,grant_type:'refresh_token'})});
+    const d=await r.json();
+    if(d.access_token){saveToken(d.access_token,d.expires_in||3600,refresh);return true;}
+  }catch(e){}
+  return false;
+}
 function b64url(buf){return btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=/g,'');}
 async function genVerifier(){const a=new Uint8Array(32);crypto.getRandomValues(a);return b64url(a);}
 async function genChallenge(v){return b64url(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(v)));}
 async function startAuth(){
   const ver=await genVerifier(),chal=await genChallenge(ver);
   sessionStorage.setItem('vt_verifier',ver);
-  const p=new URLSearchParams({client_id:CLIENT_ID,redirect_uri:getRedirectUri(),response_type:'code',scope:'https://www.googleapis.com/auth/calendar.readonly',code_challenge:chal,code_challenge_method:'S256',access_type:'online',prompt:'consent'});
+  const p=new URLSearchParams({client_id:CLIENT_ID,redirect_uri:getRedirectUri(),response_type:'code',scope:'https://www.googleapis.com/auth/calendar.readonly',code_challenge:chal,code_challenge_method:'S256',access_type:'offline',prompt:'consent'});
   window.location.href='https://accounts.google.com/o/oauth2/v2/auth?'+p;
 }
 async function handleCallback(code){
@@ -568,7 +594,7 @@ async function handleCallback(code){
   showLoading('Autenticando...');
   const r=await fetch('https://oauth2.googleapis.com/token',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({code,client_id:CLIENT_ID,client_secret:CLIENT_SECRET,redirect_uri:getRedirectUri(),grant_type:'authorization_code',code_verifier:ver})});
   const d=await r.json();
-  if(d.access_token){saveToken(d.access_token,d.expires_in||3600);window.history.replaceState({},'',window.location.pathname);showApp(true);await syncCalendar();startAutoSync();}
+  if(d.access_token){saveToken(d.access_token,d.expires_in||3600,d.refresh_token);window.history.replaceState({},'',window.location.pathname);showApp(true);await syncCalendar();startAutoSync();}
   else showError('Error auth: '+(d.error_description||d.error||'desconocido'));
 }
 function logout(){clearToken();localStorage.removeItem('vt_admin');showLogin();}
@@ -627,7 +653,11 @@ async function syncCalendar(silent){
 let autoSyncInterval=null;
 function startAutoSync(){
   if(autoSyncInterval)clearInterval(autoSyncInterval);
-  autoSyncInterval=setInterval(()=>{ if(isAdmin&&accessToken)syncCalendar(true); }, 5*60*1000); // every 5 min
+  autoSyncInterval=setInterval(async()=>{
+    if(!isAdmin)return;
+    if(!accessToken||Date.now()>tokenExpiry){await tryRefreshToken();}
+    if(accessToken)syncCalendar(true);
+  }, 5*60*1000); // every 5 min
 }
 
 // ── Load from Supabase ────────────────────────────────────────────────────────
@@ -2638,6 +2668,7 @@ updateSyncInfo();
     if(error){showLogin();alert('Error Google: '+error);return;}
     if(code){await handleCallback(code);return;}
     if(loadToken()){showApp(true);await syncCalendar();startAutoSync();}
+    else if(await tryRefreshToken()){showApp(true);await syncCalendar();startAutoSync();}
     else showLogin();
   }else{
     showApp(false);
