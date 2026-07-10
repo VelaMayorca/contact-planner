@@ -1737,9 +1737,9 @@ function showExport(which){
   const weekdays=['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
   const months=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
   const d=new Date(tStr+'T12:00:00');
-  const sep='─────────────────────';
+
   let text='*📅 '+weekdays[d.getDay()]+', '+d.getDate()+' de '+months[d.getMonth()]+'*\n';
-  text+=sep+'\n\n';
+  text+='\n';
   for(let i=0;i<dayBookings.length;i++){
     const b=dayBookings[i],n=allNotes[b.id]||{},p=b.parsed;
     if(localStorage.getItem('vt_no_export_'+b.id)==='true')continue;
@@ -1779,7 +1779,7 @@ function showExport(which){
     if(n.comment)extra.push('💬 '+n.comment);
     if(balance)extra.push('💰 '+balance);
     if(extra.length>0)text+='    '+extra.join('   ')+'\n';
-    text+='\n'+sep+'\n\n';
+    text+='\n';
   }
   document.getElementById('exportText').textContent=text;
   document.getElementById('exportModal').style.display='flex';
