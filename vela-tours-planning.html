@@ -362,7 +362,7 @@
   <div class="tab" onclick="switchTab('stats')" id="tab-stats">&#128202; Estadisticas</div>
   <div class="tab" onclick="switchTab('arreglos')" id="tab-arreglos">&#128295; Arreglos</div>
   <div class="tab" onclick="switchTab('compras')" id="tab-compras">&#128722; Compras</div>
-  <div class="tab" onclick="switchTab('historial')" id="tab-historial">&#128295; Reparacion</div>
+  <div class="tab" onclick="switchTab('historial')" id="tab-historial">&#128218; Historial</div>
 </div>
 <main>
   <!-- Contract modal -->
@@ -437,6 +437,43 @@
     <div id="view-historial" style="display:none"></div>
   </div>
 </main>
+
+<!-- Arreglo → Historial modal -->
+<div class="modal-overlay" id="arregloHistorialModal" style="display:none" onclick="if(event.target===this)closeArregloHistorial()">
+  <div class="modal" style="max-width:440px">
+    <h2 style="margin-bottom:4px">📚 ¿Guardar en Historial?</h2>
+    <p style="font-size:0.85rem;color:var(--muted);margin-bottom:16px">¿Quieres guardar este arreglo en el historial de reparaciones del barco?</p>
+    <input type="hidden" id="ahm-id"/>
+    <input type="hidden" id="ahm-boat"/>
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <div>
+        <label style="font-size:0.78rem;font-weight:600;color:var(--muted);display:block;margin-bottom:4px">Título</label>
+        <input type="text" id="ahm-titulo" style="width:100%;font-family:Inter,sans-serif;font-size:0.88rem;padding:8px 12px;border:1.5px solid var(--border);border-radius:8px;outline:none;box-sizing:border-box"/>
+      </div>
+      <div>
+        <label style="font-size:0.78rem;font-weight:600;color:var(--muted);display:block;margin-bottom:4px">Observaciones (opcional)</label>
+        <textarea id="ahm-comment" style="width:100%;font-family:Inter,sans-serif;font-size:0.85rem;padding:8px 12px;border:1.5px solid var(--border);border-radius:8px;outline:none;resize:vertical;min-height:70px;box-sizing:border-box"></textarea>
+      </div>
+      <div>
+        <label style="font-size:0.78rem;font-weight:600;color:var(--muted);display:block;margin-bottom:4px">Fecha</label>
+        <input type="date" id="ahm-fecha" style="font-family:Inter,sans-serif;font-size:0.85rem;padding:7px 12px;border:1.5px solid var(--border);border-radius:8px;outline:none"/>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <input type="file" accept="image/*" capture="environment" id="ahm-foto-input" style="display:none" onchange="onAhmFotoSelected(this)"/>
+        <button class="btn-camera" onclick="document.getElementById('ahm-foto-input').click()">📷 Foto</button>
+        <div id="ahm-foto-preview" style="display:none;align-items:center;gap:8px;flex:1">
+          <img id="ahm-foto-img" src="" style="height:48px;width:48px;object-fit:cover;border-radius:6px;cursor:pointer" onclick="openFotoModal(this.src)"/>
+          <span style="font-size:0.78rem;color:var(--muted);flex:1">Foto adjunta</span>
+          <button onclick="clearAhmFoto()" style="background:none;border:none;cursor:pointer;color:var(--muted)">✕</button>
+        </div>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:18px">
+      <button class="btn" style="background:var(--border);color:var(--text)" onclick="closeArregloHistorial(true)">Solo eliminar</button>
+      <button class="btn btn-blue" id="ahm-save-btn" onclick="saveArregloToHistorial()">Guardar en historial</button>
+    </div>
+  </div>
+</div>
 
 <!-- Foto lightbox -->
 <div class="foto-modal-overlay" id="fotoModal" style="display:none" onclick="closeFotoModal()">
@@ -913,6 +950,7 @@ const CDB=[
   {cc:'+27', flag:'🇿🇦', local:[9]},
   {cc:'+64', flag:'🇳🇿', local:[9]},
   {cc:'+966', flag:'🇸🇦', local:[9]},
+  {cc:'+90',  flag:'🇹🇷', local:[10]},
 ];
 const BOOST={'+34':2.5,'+44':2.0,'+49':1.8,'+33':1.5,'+1':1.5,'+31':1.4};
 function hasPrefix(p){const n=p.replace(/[^0-9+]/g,'');return n.startsWith('+')||n.startsWith('00');}
@@ -2047,14 +2085,72 @@ async function addArreglo(boat){
   finally{inputEl.disabled=false;delete inputEl.dataset.adding;}
 }
 
-async function deleteArreglo(id){
-  if(!confirm('¿Marcar como realizado y eliminar?'))return;
+let _ahmFoto=null;
+
+function deleteArreglo(id){
+  const arreglo=allArreglos.find(a=>a.id===id);
+  if(!arreglo)return;
+  // Show modal
+  document.getElementById('ahm-id').value=id;
+  document.getElementById('ahm-boat').value=arreglo.barco;
+  document.getElementById('ahm-titulo').value=arreglo.descripcion||'';
+  document.getElementById('ahm-comment').value='';
+  document.getElementById('ahm-fecha').value=toDateStr(new Date());
+  clearAhmFoto();
+  document.getElementById('arregloHistorialModal').style.display='flex';
+}
+
+async function onAhmFotoSelected(input){
+  const file=input.files[0];if(!file)return;
+  _ahmFoto=await compressImage(file);
+  const prev=document.getElementById('ahm-foto-preview');
+  const img=document.getElementById('ahm-foto-img');
+  if(img)img.src=_ahmFoto;
+  if(prev)prev.style.display='flex';
+}
+
+function clearAhmFoto(){
+  _ahmFoto=null;
+  const prev=document.getElementById('ahm-foto-preview');
+  const inp=document.getElementById('ahm-foto-input');
+  if(prev)prev.style.display='none';
+  if(inp)inp.value='';
+}
+
+async function _doDeleteArreglo(id){
+  const{error}=await sb.from('arreglos').delete().eq('id',id);
+  if(error)throw error;
+  allArreglos=allArreglos.filter(a=>a.id!==id);
+}
+
+async function closeArregloHistorial(deleteOnly=false){
+  document.getElementById('arregloHistorialModal').style.display='none';
+  if(deleteOnly){
+    const id=document.getElementById('ahm-id').value;
+    try{await _doDeleteArreglo(id);renderArreglos();}
+    catch(err){alert('Error: '+err.message);}
+  }
+}
+
+async function saveArregloToHistorial(){
+  const id=document.getElementById('ahm-id').value;
+  const boat=document.getElementById('ahm-boat').value;
+  const titulo=(document.getElementById('ahm-titulo').value||'').trim();
+  if(!titulo){alert('El título es obligatorio.');return;}
+  const comentario=document.getElementById('ahm-comment').value||'';
+  const fecha=document.getElementById('ahm-fecha').value||toDateStr(new Date());
+  const btn=document.getElementById('ahm-save-btn');
+  btn.disabled=true;btn.textContent='Guardando...';
   try{
-    const{error}=await sb.from('arreglos').delete().eq('id',id);
-    if(error)throw error;
-    allArreglos=allArreglos.filter(a=>a.id!==id);
+    const row={barco:boat,titulo,comentario,fecha};
+    if(_ahmFoto)row.foto=_ahmFoto;
+    const{error:he}=await sb.from('historial').insert(row);
+    if(he)throw he;
+    await _doDeleteArreglo(id);
+    document.getElementById('arregloHistorialModal').style.display='none';
     renderArreglos();
-  }catch(err){alert('Error al eliminar: '+err.message);}
+  }catch(err){alert('Error: '+err.message);}
+  finally{btn.disabled=false;btn.textContent='Guardar en historial';}
 }
 
 async function renderArreglos(){
