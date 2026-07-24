@@ -202,6 +202,17 @@
   .hist-add-form input:focus,.hist-add-form textarea:focus{border-color:var(--blue);}
   .hist-add-foto-row{display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap;}
   .hist-add-actions{display:flex;gap:8px;justify-content:flex-end;}
+  .barco-ficha{background:#f8fafc;border:1.5px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:12px;}
+  .barco-ficha-title{font-size:0.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;}
+  .barco-ficha-row{display:flex;gap:8px;align-items:center;padding:4px 0;border-bottom:1px solid #eef0f3;font-size:0.84rem;}
+  .barco-ficha-row:last-child{border-bottom:none;}
+  .barco-ficha-campo{font-weight:600;color:var(--text);min-width:130px;flex-shrink:0;}
+  .barco-ficha-valor{color:var(--muted);flex:1;}
+  .barco-ficha-edit .barco-ficha-row{padding:3px 0;}
+  .barco-ficha-edit input{font-family:Inter,sans-serif;font-size:0.82rem;padding:5px 8px;border:1.5px solid var(--border);border-radius:6px;outline:none;width:100%;}
+  .barco-ficha-edit input:focus{border-color:var(--blue);}
+  .btn-ficha-del{background:none;border:none;cursor:pointer;color:var(--muted);font-size:0.85rem;padding:2px 6px;border-radius:4px;flex-shrink:0;}
+  .btn-ficha-del:hover{background:#fee2e2;color:var(--danger);}
   /* Arreglos tab */
   .arreglos-summary{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:20px;background:var(--white);border:1.5px solid var(--border);border-radius:12px;padding:14px 18px;align-items:center;}
   .arreglos-summary-item{display:flex;align-items:center;gap:6px;font-size:0.82rem;font-weight:600;color:var(--text);}
@@ -1832,18 +1843,21 @@ function copyExport(){
 }
 
 // ── Historial tab ─────────────────────────────────────────────────────────────
-let allHistorial=[], allAceite={};
+let allHistorial=[], allAceite={}, allBarcoInfo={};
 const _histFotos={}, _histSearch={};
 
 async function loadHistorial(){
-  const[hr,ar]=await Promise.all([
+  const[hr,ar,bi]=await Promise.all([
     sb.from('historial').select('*').order('fecha',{ascending:false}).order('created_at',{ascending:false}),
-    sb.from('aceite').select('*')
+    sb.from('aceite').select('*'),
+    sb.from('barco_info').select('*').order('orden').order('created_at')
   ]);
   if(hr.error)throw hr.error;
   allHistorial=hr.data||[];
   allAceite={};
   for(const r of(ar.data||[]))allAceite[r.barco]=r.fecha;
+  allBarcoInfo={};
+  for(const r of(bi.data||[])){if(!allBarcoInfo[r.barco])allBarcoInfo[r.barco]=[];allBarcoInfo[r.barco].push(r);}
 }
 
 async function saveAceite(boat){
@@ -1918,6 +1932,83 @@ function filterHistorial(boat){
   renderHistorialBoat(boat);
 }
 
+let _fichaEditMode={};
+
+function renderBarcoFicha(boat){
+  const items=allBarcoInfo[boat]||[];
+  const editing=_fichaEditMode[boat]||false;
+  let html='<div class="barco-ficha'+(editing?' barco-ficha-edit':'')+'" id="ficha-'+boat+'">';
+  html+='<div class="barco-ficha-title"><span>🔧 Ficha técnica</span>';
+  if(isAdmin){
+    html+=editing
+      ?'<button class="btn btn-blue btn-sm" style="padding:3px 10px;font-size:0.75rem" onclick="saveBarcoFicha(\''+boat+'\')">Guardar</button>'
+      :'<button class="btn btn-sm" style="padding:3px 10px;font-size:0.75rem;background:#f1f5f9;color:var(--text)" onclick="editBarcoFicha(\''+boat+'\')">✏️ Editar</button>';
+  }
+  html+='</div>';
+  if(editing){
+    const rows=items.length?items:[{id:'',campo:'',valor:''}];
+    rows.forEach((r,i)=>{
+      html+='<div class="barco-ficha-row" id="ficha-row-'+boat+'-'+i+'">'
+        +'<input placeholder="Campo (ej. Motor)" value="'+esc(r.campo)+'" id="ficha-campo-'+boat+'-'+i+'"/>'
+        +'<input placeholder="Valor (ej. Volvo D3-110)" value="'+esc(r.valor)+'" id="ficha-valor-'+boat+'-'+i+'"/>'
+        +'<button class="btn-ficha-del" onclick="removeFichaRow(\''+boat+'\','+i+')">✕</button>'
+        +'</div>';
+    });
+    html+='<button class="btn btn-sm" style="margin-top:8px;background:#f1f5f9;color:var(--text);font-size:0.78rem" onclick="addFichaRow(\''+boat+'\')">+ Añadir campo</button>';
+    html+='<input type="hidden" id="ficha-count-'+boat+'" value="'+rows.length+'">';
+  }else{
+    if(!items.length){html+='<p style="font-size:0.82rem;color:var(--muted);margin:4px 0">'+(isAdmin?'Sin información técnica. Pulsa Editar para añadir.':'Sin información técnica registrada.')+'</p>';}
+    else items.forEach(r=>{html+='<div class="barco-ficha-row"><span class="barco-ficha-campo">'+esc(r.campo)+'</span><span class="barco-ficha-valor">'+esc(r.valor)+'</span></div>';});
+  }
+  html+='</div>';
+  return html;
+}
+
+function editBarcoFicha(boat){
+  _fichaEditMode[boat]=true;
+  const el=document.getElementById('ficha-'+boat);
+  if(el)el.outerHTML=renderBarcoFicha(boat);
+  else renderHistorialBoat(boat);
+}
+
+function addFichaRow(boat){
+  const countEl=document.getElementById('ficha-count-'+boat);
+  const i=parseInt(countEl?.value||'0');
+  const container=document.getElementById('ficha-'+boat);
+  const btn=container?.querySelector('button[onclick*="addFichaRow"]');
+  const row=document.createElement('div');
+  row.className='barco-ficha-row';
+  row.id='ficha-row-'+boat+'-'+i;
+  row.innerHTML='<input placeholder="Campo" id="ficha-campo-'+boat+'-'+i+'"/>'
+    +'<input placeholder="Valor" id="ficha-valor-'+boat+'-'+i+'"/>'
+    +'<button class="btn-ficha-del" onclick="removeFichaRow(\''+boat+'\','+i+')">✕</button>';
+  if(btn)btn.before(row);
+  if(countEl)countEl.value=i+1;
+}
+
+function removeFichaRow(boat,i){
+  document.getElementById('ficha-row-'+boat+'-'+i)?.remove();
+}
+
+async function saveBarcoFicha(boat){
+  const countEl=document.getElementById('ficha-count-'+boat);
+  const count=parseInt(countEl?.value||'0');
+  const newRows=[];
+  for(let i=0;i<count;i++){
+    const campo=(document.getElementById('ficha-campo-'+boat+'-'+i)?.value||'').trim();
+    const valor=(document.getElementById('ficha-valor-'+boat+'-'+i)?.value||'').trim();
+    if(campo&&valor)newRows.push({barco:boat,campo,valor,orden:i});
+  }
+  try{
+    // Delete existing and re-insert
+    await sb.from('barco_info').delete().eq('barco',boat);
+    if(newRows.length){const{error}=await sb.from('barco_info').insert(newRows);if(error)throw error;}
+    allBarcoInfo[boat]=newRows.map((r,i)=>({...r,id:i}));
+    _fichaEditMode[boat]=false;
+    renderHistorialBoat(boat);
+  }catch(err){alert('Error guardando: '+err.message);}
+}
+
 function renderHistorialBoat(boat){
   const container=document.getElementById('hist-body-'+boat);
   if(!container)return;
@@ -1927,6 +2018,8 @@ function renderHistorialBoat(boat){
   const items=allHistorial.filter(r=>r.barco===boat&&(!q||(r.titulo+' '+r.comentario).toLowerCase().includes(q)));
 
   let html='';
+  // Ficha técnica (top)
+  html+=renderBarcoFicha(boat);
   // Aceite row
   html+='<div class="hist-aceite-row">'
     +'<span class="hist-aceite-label">🛢 Último cambio de aceite:</span>'
