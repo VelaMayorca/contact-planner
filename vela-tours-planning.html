@@ -330,8 +330,11 @@
   #calcInput{flex:1;border:1.5px solid var(--border);border-radius:8px;padding:5px 8px;font-size:0.9rem;font-family:'Inter',sans-serif;outline:none;min-width:0;}
   #calcInput:focus{border-color:var(--blue);}
   #calcAddBtn{background:var(--blue);color:#fff;border:none;border-radius:8px;padding:5px 10px;font-size:0.9rem;font-weight:700;cursor:pointer;}
+  #calcSubBtn{background:var(--danger);color:#fff;border:none;border-radius:8px;padding:5px 10px;font-size:0.9rem;font-weight:700;cursor:pointer;}
   #calcClearBtn{width:100%;margin-top:6px;background:none;border:1.5px solid var(--border);border-radius:8px;padding:4px;font-size:0.72rem;color:var(--muted);cursor:pointer;font-family:'Inter',sans-serif;}
   #calcClearBtn:hover{border-color:var(--danger);color:var(--danger);}
+  #calcList li span.calc-sign-plus{color:var(--success);font-weight:700;margin-right:3px;}
+  #calcList li span.calc-sign-minus{color:var(--danger);font-weight:700;margin-right:3px;}
   /* Split payment */
   .split-payment-row{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-top:12px;padding-top:12px;border-top:1px dashed var(--border);}
   .split-amount-field{flex:1;min-width:120px;}
@@ -477,8 +480,9 @@
     <div id="calcTotal">0</div>
     <ul id="calcList"></ul>
     <div id="calcInputRow">
-      <input id="calcInput" type="number" inputmode="decimal" placeholder="0" onkeydown="if(event.key==='Enter')calcAdd()">
-      <button id="calcAddBtn" onclick="calcAdd()">+</button>
+      <input id="calcInput" type="number" inputmode="decimal" placeholder="0" onkeydown="calcKeydown(event)">
+      <button id="calcAddBtn" onclick="calcAdd(1)">+</button>
+      <button id="calcSubBtn" onclick="calcAdd(-1)">−</button>
     </div>
     <button id="calcClearBtn" onclick="calcClear()">Borrar todo</button>
   </div>
@@ -2801,17 +2805,26 @@ ${contractHTML}
 }
 
 // ── Calculadora flotante ──────────────────────────────────────────────────────
-let calcItems=[];
+let calcItems=[]; // [{val, sign}]
 function calcToggle(){
   const w=document.getElementById('calcWidget');
   w.classList.toggle('collapsed');
   document.getElementById('calcToggleBtn').textContent=w.classList.contains('collapsed')?'▲':'▼';
 }
-function calcAdd(){
+function calcKeydown(e){
+  if(e.key==='Enter'||e.key==='+'){e.preventDefault();calcAdd(1);}
+  else if(e.key==='-'){
+    // only intercept if input is empty (otherwise let user type negative number)
+    const inp=document.getElementById('calcInput');
+    if(inp.value===''){e.preventDefault();calcAdd(-1);}
+  }
+}
+function calcAdd(sign=1){
   const inp=document.getElementById('calcInput');
-  const val=parseFloat(inp.value.replace(',','.'));
-  if(isNaN(val))return;
-  calcItems.push(val);
+  const raw=inp.value.replace(',','.');
+  if(raw===''||isNaN(parseFloat(raw)))return;
+  const val=Math.abs(parseFloat(raw));
+  calcItems.push({val,sign});
   inp.value='';
   inp.focus();
   calcRender();
@@ -2825,10 +2838,11 @@ function calcClear(){
   calcRender();
 }
 function calcRender(){
-  const total=calcItems.reduce((a,b)=>a+b,0);
-  document.getElementById('calcTotal').textContent=total%1===0?total:total.toFixed(2);
+  const total=calcItems.reduce((a,b)=>a+b.val*b.sign,0);
+  const fmt=v=>v%1===0?v:v.toFixed(2);
+  document.getElementById('calcTotal').textContent=fmt(total);
   const ul=document.getElementById('calcList');
-  ul.innerHTML=calcItems.map((v,i)=>'<li><span>'+(v%1===0?v:v.toFixed(2))+'</span><button onclick="calcRemove('+i+')">✕</button></li>').join('');
+  ul.innerHTML=calcItems.map((it,i)=>`<li><span class="calc-sign-${it.sign===1?'plus':'minus'}">${it.sign===1?'+':'−'}</span><span>${fmt(it.val)}</span><button onclick="calcRemove(${i})">✕</button></li>`).join('');
 }
 
 function switchTab(tab){
