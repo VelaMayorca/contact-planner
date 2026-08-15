@@ -314,6 +314,24 @@
   .review-btn:hover{border-color:var(--blue);color:var(--blue);}
   .review-btn.active-yes{background:#d1fae5;border-color:#059669;color:#065f46;}
   .review-btn.active-no{background:#fee2e2;border-color:#dc2626;color:#991b1b;}
+  /* Calculadora flotante */
+  #calcWidget{position:fixed;bottom:80px;right:16px;z-index:900;width:200px;background:var(--white);border:1.5px solid var(--border);border-radius:14px;box-shadow:0 4px 20px rgba(0,0,0,0.13);overflow:hidden;transition:transform 0.2s;}
+  #calcWidget.collapsed #calcBody{display:none;}
+  #calcHeader{display:flex;align-items:center;justify-content:space-between;padding:9px 12px;background:var(--blue);color:#fff;cursor:pointer;user-select:none;}
+  #calcHeader span{font-size:0.78rem;font-weight:700;letter-spacing:0.03em;}
+  #calcToggleBtn{background:none;border:none;color:#fff;font-size:1rem;cursor:pointer;line-height:1;padding:0;}
+  #calcBody{padding:10px 12px 12px;}
+  #calcTotal{font-family:'DM Serif Display',serif;font-size:1.6rem;color:var(--blue);text-align:right;margin-bottom:8px;min-height:2rem;letter-spacing:-0.02em;}
+  #calcList{list-style:none;padding:0;margin:0 0 8px;max-height:120px;overflow-y:auto;}
+  #calcList li{display:flex;justify-content:space-between;align-items:center;font-size:0.8rem;color:var(--text);padding:2px 0;border-bottom:1px solid var(--border);}
+  #calcList li:last-child{border-bottom:none;}
+  #calcList li button{background:none;border:none;color:var(--danger);cursor:pointer;font-size:0.85rem;padding:0 2px;line-height:1;}
+  #calcInputRow{display:flex;gap:6px;}
+  #calcInput{flex:1;border:1.5px solid var(--border);border-radius:8px;padding:5px 8px;font-size:0.9rem;font-family:'Inter',sans-serif;outline:none;min-width:0;}
+  #calcInput:focus{border-color:var(--blue);}
+  #calcAddBtn{background:var(--blue);color:#fff;border:none;border-radius:8px;padding:5px 10px;font-size:0.9rem;font-weight:700;cursor:pointer;}
+  #calcClearBtn{width:100%;margin-top:6px;background:none;border:1.5px solid var(--border);border-radius:8px;padding:4px;font-size:0.72rem;color:var(--muted);cursor:pointer;font-family:'Inter',sans-serif;}
+  #calcClearBtn:hover{border-color:var(--danger);color:var(--danger);}
   /* Split payment */
   .split-payment-row{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-top:12px;padding-top:12px;border-top:1px dashed var(--border);}
   .split-amount-field{flex:1;min-width:120px;}
@@ -448,6 +466,23 @@
     <div id="view-historial" style="display:none"></div>
   </div>
 </main>
+
+<!-- Calculadora flotante (visible solo en tab mañana) -->
+<div id="calcWidget" style="display:none">
+  <div id="calcHeader" onclick="calcToggle()">
+    <span>➕ Calculadora</span>
+    <button id="calcToggleBtn">▼</button>
+  </div>
+  <div id="calcBody">
+    <div id="calcTotal">0</div>
+    <ul id="calcList"></ul>
+    <div id="calcInputRow">
+      <input id="calcInput" type="number" inputmode="decimal" placeholder="0" onkeydown="if(event.key==='Enter')calcAdd()">
+      <button id="calcAddBtn" onclick="calcAdd()">+</button>
+    </div>
+    <button id="calcClearBtn" onclick="calcClear()">Borrar todo</button>
+  </div>
+</div>
 
 <!-- Arreglo → Historial modal -->
 <div class="modal-overlay" id="arregloHistorialModal" style="display:none" onclick="if(event.target===this)closeArregloHistorial()">
@@ -2765,10 +2800,42 @@ ${contractHTML}
   win.document.close();
 }
 
+// ── Calculadora flotante ──────────────────────────────────────────────────────
+let calcItems=[];
+function calcToggle(){
+  const w=document.getElementById('calcWidget');
+  w.classList.toggle('collapsed');
+  document.getElementById('calcToggleBtn').textContent=w.classList.contains('collapsed')?'▲':'▼';
+}
+function calcAdd(){
+  const inp=document.getElementById('calcInput');
+  const val=parseFloat(inp.value.replace(',','.'));
+  if(isNaN(val))return;
+  calcItems.push(val);
+  inp.value='';
+  inp.focus();
+  calcRender();
+}
+function calcRemove(i){
+  calcItems.splice(i,1);
+  calcRender();
+}
+function calcClear(){
+  calcItems=[];
+  calcRender();
+}
+function calcRender(){
+  const total=calcItems.reduce((a,b)=>a+b,0);
+  document.getElementById('calcTotal').textContent=total%1===0?total:total.toFixed(2);
+  const ul=document.getElementById('calcList');
+  ul.innerHTML=calcItems.map((v,i)=>'<li><span>'+(v%1===0?v:v.toFixed(2))+'</span><button onclick="calcRemove('+i+')">✕</button></li>').join('');
+}
+
 function switchTab(tab){
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
   document.getElementById('tab-'+tab).classList.add('active');
   ['today','tomorrow','week','calendar','history','payments','stats','arreglos','compras','contratos','historial'].forEach(v=>{document.getElementById('view-'+v).style.display=v===tab?'block':'none';});
+  const cw=document.getElementById('calcWidget');if(cw)cw.style.display=tab==='tomorrow'?'block':'none';
   if(tab==='history')renderHistory();
   if(tab==='today')renderToday();
   if(tab==='tomorrow')renderTomorrow();
@@ -2867,6 +2934,7 @@ updateSyncInfo();
     await loadFromSupabase();
     if(isMañanaOnly){
       document.getElementById('view-tomorrow').style.display='block';
+      const cw=document.getElementById('calcWidget');if(cw)cw.style.display='block';
       renderTomorrow();
     }else if(isPaymentsOnly){
       document.getElementById('view-payments').style.display='block';
