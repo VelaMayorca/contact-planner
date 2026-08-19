@@ -1118,9 +1118,9 @@ function renderCard(b){
   const isReminder=n.contacted==='reminder';
   const cardBg=isReminder?' is-ready':isContacted?' is-contacted':'';
   let html='<div class="booking-card'+cardBg+'" id="card-'+sid+'">';
-  const noExport=localStorage.getItem('vt_no_export_'+b.id)==='true';
-  const tStartVal=localStorage.getItem('vt_time_start_'+b.id)||formatTime(b.start);
-  const tEndVal=localStorage.getItem('vt_time_end_'+b.id)||formatTime(b.end);
+  const noExport=n.no_export===true;
+  const tStartVal=n.time_start||formatTime(b.start);
+  const tEndVal=n.time_end||formatTime(b.end);
   html+='<div class="card-top">';
   html+='<div class="time-col" onclick="toggleNotes(\''+sid+'\',\''+esc(b.id)+'\')">'
     +'<input type="time" class="time-edit" value="'+esc(tStartVal)+'" onclick="event.stopPropagation()" onchange="saveTimeOverride(\''+sid+'\',\''+esc(b.id)+'\',\'start\',this.value)"/>'
@@ -1229,7 +1229,7 @@ function openWaTemplate(eventId,ev){
   const lang=detectLang(phone);
   const tmpl=WA_TEMPLATES[lang]||WA_TEMPLATES.en;
   const nombre=(n.client_name||b.parsed?.buyer||'').split(' ')[0]||'cliente';
-  const hora=localStorage.getItem('vt_time_start_'+eventId)||formatTime(b.start);
+  const hora=n.time_start||formatTime(b.start);
   const barco=n.boat||'--';
   const pax=n.pax||b.parsed?.pax||'--';
   const patron=n.skipper||'--';
@@ -1328,15 +1328,24 @@ async function saveNotes(sid,eventId){
 }
 function copyText(text,btn){navigator.clipboard.writeText(text).then(()=>{btn.textContent='Copiado';btn.classList.add('done');setTimeout(()=>{btn.textContent='Copiar';btn.classList.remove('done');},2000);});}
 
-function saveTimeOverride(sid,eventId,field,value){
-  localStorage.setItem('vt_time_'+field+'_'+eventId, value);
+async function saveTimeOverride(sid,eventId,field,value){
+  const existing=allNotes[eventId]||{};
+  const col=field==='start'?'time_start':'time_end';
+  try{
+    await upsertNote(eventId,{...existing,[col]:value});
+    if(!allNotes[eventId])allNotes[eventId]={};
+    allNotes[eventId][col]=value;
+  }catch(e){console.error('saveTimeOverride:',e);}
 }
 
-function toggleNoExport(sid,eventId){
-  const key='vt_no_export_'+eventId;
-  const newVal=localStorage.getItem(key)!=='true';
-  if(newVal)localStorage.setItem(key,'true');
-  else localStorage.removeItem(key);
+async function toggleNoExport(sid,eventId){
+  const existing=allNotes[eventId]||{};
+  const newVal=!existing.no_export;
+  try{
+    await upsertNote(eventId,{...existing,no_export:newVal});
+    if(!allNotes[eventId])allNotes[eventId]={};
+    allNotes[eventId].no_export=newVal;
+  }catch(e){console.error('toggleNoExport:',e);return;}
   const btn=document.getElementById('noexport-'+sid);
   if(btn){btn.textContent=newVal?'🚫 No exportar':'📤 Exportar';btn.className='btn-sm '+(newVal?'btn-no-export-on':'btn-no-export');}
   const title=document.querySelector('#card-'+sid+' .booking-title');
@@ -1829,11 +1838,11 @@ function showExport(which){
   text+='\n';
   for(let i=0;i<dayBookings.length;i++){
     const b=dayBookings[i],n=allNotes[b.id]||{},p=b.parsed;
-    if(localStorage.getItem('vt_no_export_'+b.id)==='true')continue;
+    if(n.no_export===true)continue;
     const phone=n.phone||p.phone||'';
     const flag=getFlag(phone);
-    const timeStart=localStorage.getItem('vt_time_start_'+b.id)||formatTime(b.start);
-    const timeEnd=localStorage.getItem('vt_time_end_'+b.id)||formatTime(b.end);
+    const timeStart=n.time_start||formatTime(b.start);
+    const timeEnd=n.time_end||formatTime(b.end);
     const boat=n.boat||'--';
     const pax=parseInt(n.pax||p.pax)||0;
     const balance=n.balance?n.balance+'€':'';
