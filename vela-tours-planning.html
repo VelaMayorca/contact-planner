@@ -314,6 +314,11 @@
   .review-btn:hover{border-color:var(--blue);color:var(--blue);}
   .review-btn.active-yes{background:#d1fae5;border-color:#059669;color:#065f46;}
   .review-btn.active-no{background:#fee2e2;border-color:#dc2626;color:#991b1b;}
+  .review-comment-row{margin-top:6px;display:flex;flex-direction:column;gap:5px;}
+  .review-comment-textarea{width:100%;box-sizing:border-box;border:1.5px solid #fca5a5;border-radius:8px;padding:7px 10px;font-size:0.82rem;font-family:'Inter',sans-serif;color:var(--text);background:#fff5f5;resize:vertical;min-height:60px;outline:none;}
+  .review-comment-textarea:focus{border-color:var(--danger);}
+  .review-comment-save{align-self:flex-end;font-size:0.75rem;font-weight:700;padding:3px 12px;border-radius:20px;border:1.5px solid var(--danger);background:transparent;color:var(--danger);cursor:pointer;}
+  .review-comment-save.saved{background:#fee2e2;}
   /* Calculadora flotante */
   #calcWidget{position:fixed;bottom:80px;right:16px;z-index:900;width:200px;background:var(--white);border:1.5px solid var(--border);border-radius:14px;box-shadow:0 4px 20px rgba(0,0,0,0.13);overflow:hidden;transition:transform 0.2s;}
   #calcWidget.collapsed #calcBody{display:none;}
@@ -1566,6 +1571,13 @@ function renderPaymentCard(b){
   html+='<button class="review-btn '+reviewYesActive+'" onclick="setRating(\''+sid+'\',\''+esc(b.id)+'\',3)">Sí</button>';
   html+='<button class="review-btn '+reviewNoActive+'" onclick="setRating(\''+sid+'\',\''+esc(b.id)+'\',1)">No</button>';
   html+='</div>';
+  if(rating===1){
+    const rc=esc(n.review_comment||'');
+    html+='<div class="review-comment-row">'
+      +'<textarea class="review-comment-textarea" id="rvc-'+sid+'" placeholder="¿Por qué no dejó review? Añade un comentario...">'+rc+'</textarea>'
+      +'<button class="review-comment-save" id="rvcs-'+sid+'" onclick="saveReviewComment(\''+sid+'\',\''+esc(b.id)+'\')">Guardar</button>'
+      +'</div>';
+  }
   // Review request row: only if rated Sí AND booking is from yesterday or older
   const todayStr2=toDateStr(new Date());
   const isPastBooking=b.date<todayStr2;
@@ -1712,6 +1724,21 @@ async function setRating(sid,eventId,stars){
     allNotes[eventId]={...existing,rating:newRating};
     renderPayments();
   }catch(err){alert('Error guardando valoracion: '+err.message);}
+}
+
+async function saveReviewComment(sid,eventId){
+  const ta=document.getElementById('rvc-'+sid);
+  const btn=document.getElementById('rvcs-'+sid);
+  if(!ta||!btn)return;
+  const comment=ta.value.trim();
+  const existing=allNotes[eventId]||{};
+  try{
+    btn.textContent='...';
+    await upsertNote(eventId,{...existing,review_comment:comment});
+    allNotes[eventId]={...existing,review_comment:comment};
+    btn.textContent='✓ Guardado';btn.classList.add('saved');
+    setTimeout(()=>{btn.textContent='Guardar';btn.classList.remove('saved');},2000);
+  }catch(err){btn.textContent='Error';setTimeout(()=>{btn.textContent='Guardar';},2000);}
 }
 
 function onClientNameInput(sid){
