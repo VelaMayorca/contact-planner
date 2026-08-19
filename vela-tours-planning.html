@@ -617,7 +617,35 @@ function copyDebugLog(){const text=_logEntries.map(e=>`[${e.ts}] ${e.msg}`).join
 function showDebugBtn(){const b=document.getElementById('btnDebug');if(b)b.style.display='inline-flex';}
 
 // ── Supabase ──────────────────────────────────────────────────────────────────
-async function loadAllNotes(){const{data,error}=await sb.from('notas').select('*');if(error){console.error(error);return{};}const map={};for(const r of(data||[]))map[r.event_id]=r;return map;}
+async function loadAllNotes(){
+  const{data,error}=await sb.from('notas').select('*');
+  if(error){console.error(error);return{};}
+  const map={},byBuyerDate={};
+  for(const r of(data||[])){
+    map[r.event_id]=r;
+    if(r.buyer&&r.date){
+      const k=r.date+'|'+(r.buyer||'').toLowerCase().trim();
+      if(!byBuyerDate[k])byBuyerDate[k]=r; // keep first match
+    }
+  }
+  map.__bbd=byBuyerDate;
+  return map;
+}
+function getNoteForBooking(b){
+  let n=allNotes[b.id];
+  if(!n){
+    const buyer=(b.parsed?.buyer||'').toLowerCase().trim();
+    const k=b.date+'|'+buyer;
+    const fallback=allNotes.__bbd?.[k];
+    if(fallback){
+      // Re-link: update event_id in Supabase silently
+      allNotes[b.id]=fallback;
+      upsertNote(b.id,{...fallback,event_id:b.id,buyer:b.parsed?.buyer||'',date:b.date}).catch(()=>{});
+      n=fallback;
+    }
+  }
+  return n||{};
+}
 async function upsertNote(eventId,fields){const{error}=await sb.from('notas').upsert({event_id:eventId,...fields,updated_at:new Date().toISOString()},{onConflict:'event_id'});if(error)throw error;}
 async function saveEventsToSupabase(events){
   if(!events.length)return;
@@ -1089,7 +1117,7 @@ function renderProgressRing(bookings,isTomorrow){
 
 // ── Render card ───────────────────────────────────────────────────────────────
 function renderCard(b){
-  const p=b.parsed,n=allNotes[b.id]||{};
+  const p=b.parsed,n=getNoteForBooking(b);
   const phone=n.phone||p.phone||'';
   const needsP=phone&&!hasPrefix(phone);
   const guess=needsP?guessPrefix(phone):null;
@@ -1312,6 +1340,8 @@ async function saveNotes(sid,eventId){
     comment:document.getElementById('n-comment-'+sid)?.value||'',
     phone:allNotes[eventId]?.phone||''
   };
+  const bk=allBookings.find(b=>b.id===eventId);
+  if(bk){fields.buyer=bk.parsed?.buyer||'';fields.date=bk.date||'';}
   try{
     await upsertNote(eventId,fields);allNotes[eventId]={...fields,event_id:eventId};
 
@@ -1506,7 +1536,7 @@ async function renderPayments(){
 }
 
 function renderPaymentCard(b){
-  const n=allNotes[b.id]||{};
+  const n=getNoteForBooking(b);
   const sid=esc(b.id);
   const boat=n.boat||'--';
   const skipper=n.skipper||'--';
@@ -1719,9 +1749,11 @@ async function setRating(sid,eventId,stars){
     if(!confirmed)return;
   }
 
+  const bkR=allBookings.find(b=>b.id===eventId);
+  const extraR=bkR?{buyer:bkR.parsed?.buyer||'',date:bkR.date||''}:{};
   try{
-    await upsertNote(eventId,{...existing,rating:newRating});
-    allNotes[eventId]={...existing,rating:newRating};
+    await upsertNote(eventId,{...existing,...extraR,rating:newRating});
+    allNotes[eventId]={...existing,...extraR,rating:newRating};
     renderPayments();
   }catch(err){alert('Error guardando valoracion: '+err.message);}
 }
