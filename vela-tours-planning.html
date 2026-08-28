@@ -483,7 +483,7 @@
     <div id="view-week" style="display:none"></div>
     <div id="view-calendar" style="display:none"></div>
     <div id="view-history" style="display:none"></div>
-    <div id="view-payments" style="display:none"><div id="aceite-warnings" style="display:none;padding-top:12px"></div></div>
+    <div id="view-payments" style="display:none"></div>
     <div id="view-stats" style="display:none"></div>
     <div id="view-arreglos" style="display:none"></div>
     <div id="view-compras" style="display:none"></div>
@@ -1524,7 +1524,7 @@ async function renderPayments(){
     const _seen=new Map();
     for(const b of events.sort((a,bk)=>_ns(bk.id)-_ns(a.id))){const k=_bId(b.id)+'|'+b.parsed.buyer;if(!_seen.has(k))_seen.set(k,b);}
     const dedupedEvents=[..._seen.values()];
-    let html=buildPaymentsDateNav(dStr)+buildPaymentsFilterBar();
+    let html=buildPaymentsDateNav(dStr)+buildPaymentsFilterBar()+buildAceiteWarningsHtml();
     const filteredEvents=filterPaymentsBookings(dedupedEvents);
     if(!filteredEvents.length){
       html+='<div class="state-screen"><div class="icon">&#127754;</div><h2>Sin charters</h2><p>'+(events.length?'No hay charters con estos filtros.':'No hubo tours este dia.')+'</p></div>';
@@ -2031,24 +2031,25 @@ function _formatRevInfo(fecha,quien){
   const dateStr=d.toLocaleDateString('es-ES',{day:'numeric',month:'short'});
   return 'Última revisión: <strong>'+dateStr+'</strong>'+(quien?' por <strong>'+quien+'</strong>':'')+' (hace '+days+' días)';
 }
-function renderAceiteWarnings(){
-  const wb=document.getElementById('aceite-warnings');
-  if(!wb)return;
+function buildAceiteWarningsHtml(){
   const today=Date.now();
   const warnings=BOATS.filter(boat=>{
     const r=allAceite[boat]?.revision_fecha;
-    if(!r)return true; // never checked
-    const days=(today-new Date(r+'T12:00:00').getTime())/(1000*60*60*24);
-    return days>10;
+    if(!r)return true;
+    return (today-new Date(r+'T12:00:00').getTime())/(1000*60*60*24)>10;
   });
-  wb.innerHTML=warnings.map(boat=>{
+  if(!warnings.length)return '';
+  return warnings.map(boat=>{
     const r=allAceite[boat]?.revision_fecha;
     const days=r?Math.floor((today-new Date(r+'T12:00:00').getTime())/(1000*60*60*24)):null;
     return '<div class="aceite-warning-bar"><span>🛢</span>'
-      +boat+' lleva '+(days!==null?'más de '+days+' días':'tiempo indefinido')+' sin revisar nivel de aceite'
+      +boat+' lleva '+(days!==null?'más de '+days+' días':'un tiempo indefinido')+' sin revisar nivel de aceite'
       +'</div>';
   }).join('');
-  wb.style.display=warnings.length?'block':'none';
+}
+function renderAceiteWarnings(){
+  // Re-render payments to pick up fresh warning HTML
+  renderPayments();
 }
 
 let _aceiteRevBoat=null, _aceiteRevPerson=null;
