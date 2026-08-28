@@ -1509,7 +1509,6 @@ async function renderPayments(){
     const{data}=await sb.from('aceite').select('*');
     for(const r of(data||[]))allAceite[r.barco]={fecha:r.fecha,revision_fecha:r.revision_fecha,revision_quien:r.revision_quien};
   }
-  renderAceiteWarnings();
   const el=document.getElementById('view-payments');
   const dStr=toDateStr(paymentsDate);
   const scrollY=window.scrollY;
