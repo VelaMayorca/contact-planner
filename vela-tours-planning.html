@@ -186,6 +186,23 @@
   .hist-aceite-date{font-size:0.88rem;font-weight:700;color:var(--blue);}
   .hist-aceite-input{font-family:'Inter',sans-serif;font-size:0.85rem;padding:5px 10px;border:1.5px solid var(--border);border-radius:8px;color:var(--text);outline:none;}
   .hist-aceite-input:focus{border-color:var(--blue);}
+  .hist-aceite-revision-row{display:flex;align-items:center;gap:10px;padding:10px 0;flex-wrap:wrap;}
+  .btn-aceite-rev{background:#f59e0b;color:#fff;border:none;border-radius:8px;padding:6px 14px;font-size:0.8rem;font-weight:700;cursor:pointer;}
+  .btn-aceite-rev:hover{opacity:0.88;}
+  .aceite-rev-info{font-size:0.8rem;color:var(--muted);}
+  .aceite-rev-info strong{color:var(--text);}
+  /* Aceite revision modal */
+  #aceiteRevModal{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:2000;align-items:center;justify-content:center;}
+  #aceiteRevModal.open{display:flex;}
+  .aceite-rev-modal-box{background:var(--white);border-radius:16px;padding:24px;width:300px;max-width:90vw;box-shadow:0 8px 32px rgba(0,0,0,0.18);}
+  .aceite-rev-modal-title{font-family:'DM Serif Display',serif;font-size:1.15rem;margin-bottom:16px;}
+  .aceite-rev-person-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px;}
+  .aceite-rev-person-btn{padding:8px;border:1.5px solid var(--border);border-radius:10px;background:transparent;font-size:0.88rem;font-weight:600;cursor:pointer;transition:all 0.15s;}
+  .aceite-rev-person-btn:hover,.aceite-rev-person-btn.selected{background:var(--blue);color:#fff;border-color:var(--blue);}
+  .aceite-rev-modal-actions{display:flex;gap:8px;justify-content:flex-end;}
+  /* Aceite warning in Tours */
+  .aceite-warning-bar{background:#fef2f2;border:1.5px solid #fca5a5;border-radius:10px;padding:10px 14px;margin:0 16px 12px;display:flex;align-items:center;gap:8px;font-size:0.82rem;font-weight:600;color:#dc2626;}
+  .aceite-warning-bar span{font-size:1.1rem;}
   .hist-search{width:100%;font-family:'Inter',sans-serif;font-size:0.85rem;padding:8px 12px;border:1.5px solid var(--border);border-radius:8px;color:var(--text);outline:none;margin:10px 0 6px;box-sizing:border-box;}
   .hist-search:focus{border-color:var(--blue);}
   .hist-entry{border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-top:10px;background:#fafafa;}
@@ -466,7 +483,7 @@
     <div id="view-week" style="display:none"></div>
     <div id="view-calendar" style="display:none"></div>
     <div id="view-history" style="display:none"></div>
-    <div id="view-payments" style="display:none"></div>
+    <div id="view-payments" style="display:none"><div id="aceite-warnings" style="display:none;padding-top:12px"></div></div>
     <div id="view-stats" style="display:none"></div>
     <div id="view-arreglos" style="display:none"></div>
     <div id="view-compras" style="display:none"></div>
@@ -490,6 +507,19 @@
       <button id="calcSubBtn" onclick="calcAdd(-1)">−</button>
     </div>
     <button id="calcClearBtn" onclick="calcClear()">Borrar todo</button>
+  </div>
+</div>
+
+<!-- Aceite revision modal -->
+<div id="aceiteRevModal" onclick="if(event.target===this)closeAceiteRevModal()">
+  <div class="aceite-rev-modal-box">
+    <div class="aceite-rev-modal-title">🛢 Aceite revisado</div>
+    <p style="font-size:0.83rem;color:var(--muted);margin-bottom:12px">¿Quién ha revisado el nivel de aceite?</p>
+    <div class="aceite-rev-person-grid" id="aceiteRevPersonGrid"></div>
+    <div class="aceite-rev-modal-actions">
+      <button class="btn btn-sm" onclick="closeAceiteRevModal()">Cancelar</button>
+      <button class="btn btn-sm" style="background:var(--blue);color:#fff" onclick="confirmAceiteRev()">Confirmar</button>
+    </div>
   </div>
 </div>
 
@@ -1474,6 +1504,12 @@ function buildPaymentsDateNav(dStr){
 }
 
 async function renderPayments(){
+  // Load aceite data if not yet loaded, then show warnings
+  if(!Object.keys(allAceite).length){
+    const{data}=await sb.from('aceite').select('*');
+    for(const r of(data||[]))allAceite[r.barco]={fecha:r.fecha,revision_fecha:r.revision_fecha,revision_quien:r.revision_quien};
+  }
+  renderAceiteWarnings();
   const el=document.getElementById('view-payments');
   const dStr=toDateStr(paymentsDate);
   const scrollY=window.scrollY;
@@ -1961,7 +1997,7 @@ async function loadHistorial(){
   if(hr.error)throw hr.error;
   allHistorial=hr.data||[];
   allAceite={};
-  for(const r of(ar.data||[]))allAceite[r.barco]=r.fecha;
+  for(const r of(ar.data||[]))allAceite[r.barco]={fecha:r.fecha,revision_fecha:r.revision_fecha,revision_quien:r.revision_quien};
   allBarcoInfo={};
   for(const r of(bi.data||[])){if(!allBarcoInfo[r.barco])allBarcoInfo[r.barco]=[];allBarcoInfo[r.barco].push(r);}
 }
@@ -1972,7 +2008,8 @@ async function saveAceite(boat){
   const fecha=inp.value;
   const{error}=await sb.from('aceite').upsert({barco:boat,fecha,updated_at:new Date().toISOString()},{onConflict:'barco'});
   if(error){alert('Error: '+error.message);return;}
-  allAceite[boat]=fecha;
+  if(!allAceite[boat])allAceite[boat]={};
+  allAceite[boat].fecha=fecha;
   const disp=document.getElementById('hist-aceite-disp-'+boat);
   if(disp)disp.textContent=fecha?new Date(fecha+'T12:00:00').toLocaleDateString('es-ES',{day:'numeric',month:'long',year:'numeric'}):'Sin registrar';
   inp.style.display='none';
@@ -1985,6 +2022,70 @@ function editAceite(boat){
   const btn=document.getElementById('hist-aceite-btn-'+boat);
   if(inp){inp.style.display='inline-block';inp.focus();}
   if(btn)btn.style.display='none';
+}
+
+function _formatRevInfo(fecha,quien){
+  if(!fecha)return '<em>Sin revisar</em>';
+  const d=new Date(fecha+'T12:00:00');
+  const days=Math.floor((Date.now()-d.getTime())/(1000*60*60*24));
+  const dateStr=d.toLocaleDateString('es-ES',{day:'numeric',month:'short'});
+  return 'Última revisión: <strong>'+dateStr+'</strong>'+(quien?' por <strong>'+quien+'</strong>':'')+' (hace '+days+' días)';
+}
+function renderAceiteWarnings(){
+  const wb=document.getElementById('aceite-warnings');
+  if(!wb)return;
+  const today=Date.now();
+  const warnings=BOATS.filter(boat=>{
+    const r=allAceite[boat]?.revision_fecha;
+    if(!r)return true; // never checked
+    const days=(today-new Date(r+'T12:00:00').getTime())/(1000*60*60*24);
+    return days>10;
+  });
+  wb.innerHTML=warnings.map(boat=>{
+    const r=allAceite[boat]?.revision_fecha;
+    const days=r?Math.floor((today-new Date(r+'T12:00:00').getTime())/(1000*60*60*24)):null;
+    return '<div class="aceite-warning-bar"><span>🛢</span>'
+      +boat+' lleva '+(days!==null?'más de '+days+' días':'tiempo indefinido')+' sin revisar nivel de aceite'
+      +'</div>';
+  }).join('');
+  wb.style.display=warnings.length?'block':'none';
+}
+
+let _aceiteRevBoat=null, _aceiteRevPerson=null;
+const ACEITE_PERSONS=['Edu','Silvio','Alberto','Jaume','Valentin'];
+
+function showAceiteRevModal(boat){
+  _aceiteRevBoat=boat;_aceiteRevPerson=null;
+  const grid=document.getElementById('aceiteRevPersonGrid');
+  grid.innerHTML=ACEITE_PERSONS.map(p=>`<button class="aceite-rev-person-btn" onclick="selectAceiteRevPerson(this,'${p}')">${p}</button>`).join('');
+  document.getElementById('aceiteRevModal').classList.add('open');
+}
+function selectAceiteRevPerson(btn,name){
+  document.querySelectorAll('.aceite-rev-person-btn').forEach(b=>b.classList.remove('selected'));
+  btn.classList.add('selected');
+  _aceiteRevPerson=name;
+}
+function closeAceiteRevModal(){
+  document.getElementById('aceiteRevModal').classList.remove('open');
+  _aceiteRevBoat=null;_aceiteRevPerson=null;
+}
+async function confirmAceiteRev(){
+  if(!_aceiteRevPerson){alert('Selecciona quién lo ha revisado.');return;}
+  const boat=_aceiteRevBoat;
+  const fecha=new Date().toISOString().split('T')[0];
+  const{error}=await sb.from('aceite').upsert({barco:boat,revision_fecha:fecha,revision_quien:_aceiteRevPerson,updated_at:new Date().toISOString()},{onConflict:'barco'});
+  if(error){alert('Error: '+error.message);return;}
+  if(!allAceite[boat])allAceite[boat]={};
+  allAceite[boat].revision_fecha=fecha;
+  allAceite[boat].revision_quien=_aceiteRevPerson;
+  closeAceiteRevModal();
+  // Update UI in historial
+  const infoEl=document.getElementById('aceite-rev-info-'+boat);
+  if(infoEl)infoEl.innerHTML=_formatRevInfo(fecha,_aceiteRevPerson);
+  // Refresh tours warning if visible
+  const wb=document.getElementById('aceite-warnings');
+  if(wb)renderAceiteWarnings();
+}
 }
 
 async function addReparacion(boat){
@@ -2119,7 +2220,8 @@ function renderHistorialBoat(boat){
   const container=document.getElementById('hist-body-'+boat);
   if(!container)return;
   const q=_histSearch[boat]||'';
-  const aceiteDate=allAceite[boat];
+  const aceiteObj=allAceite[boat]||{};
+  const aceiteDate=aceiteObj.fecha;
   const aceiteStr=aceiteDate?new Date(aceiteDate+'T12:00:00').toLocaleDateString('es-ES',{day:'numeric',month:'long',year:'numeric'}):'Sin registrar';
   const items=allHistorial.filter(r=>r.barco===boat&&(!q||(r.titulo+' '+r.comentario).toLowerCase().includes(q)));
 
@@ -2132,6 +2234,10 @@ function renderHistorialBoat(boat){
     +'<span class="hist-aceite-disp" id="hist-aceite-disp-'+boat+'">'+aceiteStr+'</span>'
     +'<input type="date" class="hist-aceite-input" id="hist-aceite-'+boat+'" value="'+(aceiteDate||'')+'" style="display:none" onchange="saveAceite(\''+boat+'\')" onblur="saveAceite(\''+boat+'\')">'
     +'<button class="btn btn-sm" id="hist-aceite-btn-'+boat+'" style="padding:4px 10px;font-size:0.75rem" onclick="editAceite(\''+boat+'\')">✏️ Editar</button>'
+    +'</div>'
+    +'<div class="hist-aceite-revision-row">'
+    +'<button class="btn-aceite-rev" onclick="showAceiteRevModal(\''+boat+'\')">🛢 Aceite revisado</button>'
+    +'<span class="aceite-rev-info" id="aceite-rev-info-'+boat+'">'+_formatRevInfo(aceiteObj.revision_fecha,aceiteObj.revision_quien)+'</span>'
     +'</div>';
 
   // Search
