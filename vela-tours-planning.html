@@ -1662,7 +1662,6 @@ async function renderPayments(){
 
       html+='<div class="top-bar"><div class="summary-bar">';
       html+='<div class="sum-item"><div class="sum-num">'+sorted.length+'</div><div class="sum-label">Charters</div></div>';
-      html+='<div class="sum-item"><div class="sum-num sum-balance">'+totalBalance.toLocaleString('es-ES')+'&#8364;</div><div class="sum-label">Total</div></div>';
       if(bbva>0)html+='<div class="sum-item"><div class="sum-num" style="color:#1464A5">'+bbva.toLocaleString('es-ES')+'&#8364;</div><div class="sum-label">TPV BBVA</div></div>';
       if(santander>0)html+='<div class="sum-item"><div class="sum-num" style="color:#EC0000">'+santander.toLocaleString('es-ES')+'&#8364;</div><div class="sum-label">TPV Santander</div></div>';
       if(btp>0)html+='<div class="sum-item"><div class="sum-num" style="color:#f97316">'+btp.toLocaleString('es-ES')+'&#8364;</div><div class="sum-label">TPV BTP</div></div>';
