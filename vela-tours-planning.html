@@ -224,8 +224,12 @@
     .hist-acc-header{padding:10px 12px;}
     .hist-acc-body{padding:0 12px 12px;}
 
-    /* Aceite warning */
-    .aceite-warning-bar{margin:0 0 8px;font-size:0.78rem;}
+    /* Boat status table mobile */
+    .boat-status-table{overflow-x:auto;}
+    .bst-row{grid-template-columns:70px repeat(5,1fr);min-width:360px;}
+    .bst-label{font-size:0.65rem;padding:8px 8px;}
+    .bst-boat-name{font-size:0.65rem;padding:6px 2px;}
+    .bst-circle{width:30px;height:30px;}
 
     /* WA template modal */
     #waTemplateModal .modal{max-height:92vh;}
@@ -288,9 +292,22 @@
   .aceite-rev-person-btn{padding:8px;border:1.5px solid var(--border);border-radius:10px;background:transparent;font-size:0.88rem;font-weight:600;cursor:pointer;transition:all 0.15s;}
   .aceite-rev-person-btn:hover,.aceite-rev-person-btn.selected{background:var(--blue);color:#fff;border-color:var(--blue);}
   .aceite-rev-modal-actions{display:flex;gap:8px;justify-content:flex-end;}
-  /* Aceite warning in Tours */
-  .aceite-warning-bar{background:#fef2f2;border:1.5px solid #fca5a5;border-radius:10px;padding:10px 14px;margin:0 16px 12px;display:flex;align-items:center;gap:8px;font-size:0.82rem;font-weight:600;color:#dc2626;}
-  .aceite-warning-bar span{font-size:1.1rem;}
+  /* Boat status table */
+  .boat-status-table{background:var(--white);border:1.5px solid var(--border);border-radius:14px;overflow:hidden;margin-bottom:16px;box-shadow:0 2px 8px rgba(10,33,64,0.07);}
+  .bst-row{display:grid;grid-template-columns:80px repeat(5,1fr);border-bottom:1px solid var(--border);}
+  .bst-row:last-child{border-bottom:none;}
+  .bst-label{display:flex;align-items:center;padding:10px 12px;font-size:0.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.04em;background:#f8fafc;border-right:1px solid var(--border);}
+  .bst-boat-name{display:flex;align-items:center;justify-content:center;padding:8px 4px;font-size:0.72rem;font-weight:700;color:var(--text);text-align:center;background:#f8fafc;border-right:1px solid var(--border);}
+  .bst-boat-name:last-child{border-right:none;}
+  .bst-cell{display:flex;align-items:center;justify-content:center;padding:10px 4px;border-right:1px solid var(--border);}
+  .bst-cell:last-child{border-right:none;}
+  .bst-circle{width:36px;height:36px;border-radius:50%;border:none;cursor:pointer;transition:transform 0.15s,box-shadow 0.15s;box-shadow:0 2px 6px rgba(0,0,0,0.15);}
+  .bst-circle:hover{transform:scale(1.12);box-shadow:0 3px 10px rgba(0,0,0,0.22);}
+  .bst-circle:active{transform:scale(0.95);}
+  .bst-green{background:#22c55e;}
+  .bst-red{background:#ef4444;}
+  .bst-yellow{background:#f59e0b;}
+  .bst-fuel-ok{background:#22c55e;}
   .hist-search{width:100%;font-family:'Inter',sans-serif;font-size:0.85rem;padding:8px 12px;border:1.5px solid var(--border);border-radius:8px;color:var(--text);outline:none;margin:10px 0 6px;box-sizing:border-box;}
   .hist-search:focus{border-color:var(--blue);}
   .hist-entry{border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-top:10px;background:#fafafa;}
@@ -1597,7 +1614,7 @@ async function renderPayments(){
   // Load aceite data if not yet loaded, then show warnings
   if(!Object.keys(allAceite).length){
     const{data}=await sb.from('aceite').select('*');
-    for(const r of(data||[]))allAceite[r.barco]={fecha:r.fecha,revision_fecha:r.revision_fecha,revision_quien:r.revision_quien};
+    for(const r of(data||[]))allAceite[r.barco]={fecha:r.fecha,revision_fecha:r.revision_fecha,revision_quien:r.revision_quien,gasolina_estado:r.gasolina_estado||'ok'};
   }
   const el=document.getElementById('view-payments');
   const dStr=toDateStr(paymentsDate);
@@ -2086,7 +2103,7 @@ async function loadHistorial(){
   if(hr.error)throw hr.error;
   allHistorial=hr.data||[];
   allAceite={};
-  for(const r of(ar.data||[]))allAceite[r.barco]={fecha:r.fecha,revision_fecha:r.revision_fecha,revision_quien:r.revision_quien};
+  for(const r of(ar.data||[]))allAceite[r.barco]={fecha:r.fecha,revision_fecha:r.revision_fecha,revision_quien:r.revision_quien,gasolina_estado:r.gasolina_estado||'ok'};
   allBarcoInfo={};
   for(const r of(bi.data||[])){if(!allBarcoInfo[r.barco])allBarcoInfo[r.barco]=[];allBarcoInfo[r.barco].push(r);}
 }
@@ -2122,22 +2139,43 @@ function _formatRevInfo(fecha,quien){
 }
 function buildAceiteWarningsHtml(){
   const today=Date.now();
-  const warnings=BOATS.filter(boat=>{
-    const r=allAceite[boat]?.revision_fecha;
-    if(!r)return true;
-    return (today-new Date(r+'T12:00:00').getTime())/(1000*60*60*24)>10;
-  });
-  if(!warnings.length)return '';
-  return warnings.map(boat=>{
+  let html='<div class="boat-status-table">';
+  // Header row
+  html+='<div class="bst-row"><div class="bst-label"></div>';
+  BOATS.forEach(b=>{ html+='<div class="bst-boat-name">'+b+'</div>'; });
+  html+='</div>';
+  // Oil row
+  html+='<div class="bst-row"><div class="bst-label">🛢 Aceite</div>';
+  BOATS.forEach(boat=>{
     const r=allAceite[boat]?.revision_fecha;
     const days=r?Math.floor((today-new Date(r+'T12:00:00').getTime())/(1000*60*60*24)):null;
-    return '<div class="aceite-warning-bar"><span>🛢</span>'
-      +boat+' lleva '+(days!==null?'más de '+days+' días':'un tiempo indefinido')+' sin revisar nivel de aceite'
-      +'</div>';
-  }).join('');
+    const ok=days!==null&&days<=10;
+    const cls=ok?'bst-green':'bst-red';
+    const tip=ok?'Revisado hace '+days+' días':(days!==null?'Hace '+days+' días · Click para marcar revisado':'Sin revisar · Click para marcar revisado');
+    html+='<div class="bst-cell"><button class="bst-circle '+cls+'" title="'+tip+'" onclick="showAceiteRevModal(\''+boat+'\')"></button></div>';
+  });
+  html+='</div>';
+  // Fuel row
+  html+='<div class="bst-row"><div class="bst-label">⛽ Gasolina</div>';
+  BOATS.forEach(boat=>{
+    const estado=allAceite[boat]?.gasolina_estado||'ok';
+    const cls=estado==='quarter'?'bst-yellow':'bst-fuel-ok';
+    const tip=estado==='quarter'?'¡Depósito a 1/4! · Click si has reposto':'Depósito OK · Click si está a 1/4';
+    html+='<div class="bst-cell"><button class="bst-circle '+cls+'" title="'+tip+'" onclick="toggleGasolina(\''+boat+'\')"></button></div>';
+  });
+  html+='</div>';
+  html+='</div>';
+  return html;
 }
-function renderAceiteWarnings(){
-  // Re-render payments to pick up fresh warning HTML
+function renderAceiteWarnings(){ renderPayments(); }
+
+async function toggleGasolina(boat){
+  const current=allAceite[boat]?.gasolina_estado||'ok';
+  const newState=current==='quarter'?'ok':'quarter';
+  const{error}=await sb.from('aceite').upsert({barco:boat,gasolina_estado:newState,updated_at:new Date().toISOString()},{onConflict:'barco'});
+  if(error){alert('Error: '+error.message);return;}
+  if(!allAceite[boat])allAceite[boat]={};
+  allAceite[boat].gasolina_estado=newState;
   renderPayments();
 }
 
@@ -2168,13 +2206,13 @@ async function confirmAceiteRev(){
   if(!allAceite[boat])allAceite[boat]={};
   allAceite[boat].revision_fecha=fecha;
   allAceite[boat].revision_quien=_aceiteRevPerson;
+  // Save to historial
+  await sb.from('historial').insert({barco:boat,titulo:'Revisión nivel de aceite',comentario:'Revisado por '+_aceiteRevPerson,fecha,created_at:new Date().toISOString()});
   closeAceiteRevModal();
   // Update UI in historial
   const infoEl=document.getElementById('aceite-rev-info-'+boat);
   if(infoEl)infoEl.innerHTML=_formatRevInfo(fecha,_aceiteRevPerson);
-  // Refresh tours warning if visible
-  const wb=document.getElementById('aceite-warnings');
-  if(wb)renderAceiteWarnings();
+  renderPayments();
 }
 
 async function addReparacion(boat){
