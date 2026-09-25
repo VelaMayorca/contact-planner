@@ -757,28 +757,37 @@ function showDebugBtn(){const b=document.getElementById('btnDebug');if(b)b.style
 async function loadAllNotes(){
   const{data,error}=await sb.from('notas').select('*');
   if(error){console.error(error);return{};}
-  const map={},byBuyerDate={};
+  const map={},byBuyerDate={},byPhoneDate={};
   for(const r of(data||[])){
     map[r.event_id]=r;
     if(r.buyer&&r.date){
       const k=r.date+'|'+(r.buyer||'').toLowerCase().trim();
-      if(!byBuyerDate[k])byBuyerDate[k]=r; // keep first match
+      if(!byBuyerDate[k])byBuyerDate[k]=r;
+    }
+    if(r.phone&&r.date){
+      const kp=r.date+'|'+(r.phone||'').replace(/[\s\-().+]/g,'').trim();
+      if(kp.length>5&&!byPhoneDate[kp])byPhoneDate[kp]=r;
     }
   }
   map.__bbd=byBuyerDate;
+  map.__bpd=byPhoneDate;
   return map;
 }
 function getNoteForBooking(b){
   let n=allNotes[b.id];
   if(!n){
+    // Fallback 1: buyer + date
     const buyer=(b.parsed?.buyer||'').toLowerCase().trim();
-    const k=b.date+'|'+buyer;
-    const fallback=allNotes.__bbd?.[k];
+    const fallback1=buyer?allNotes.__bbd?.[b.date+'|'+buyer]:null;
+    // Fallback 2: phone + date (more reliable)
+    const phone=(b.parsed?.phone||'').replace(/[\s\-().+]/g,'').trim();
+    const fallback2=phone?allNotes.__bpd?.[b.date+'|'+phone]:null;
+    const fallback=fallback1||fallback2;
     if(fallback){
-      // Re-link: update event_id in Supabase silently
-      allNotes[b.id]=fallback;
-      upsertNote(b.id,{...fallback,event_id:b.id,buyer:b.parsed?.buyer||'',date:b.date}).catch(()=>{});
-      n=fallback;
+      const copy={...fallback}; // copia para evitar objeto compartido entre bookings
+      allNotes[b.id]=copy;
+      upsertNote(b.id,{...copy,event_id:b.id,buyer:b.parsed?.buyer||'',date:b.date,phone:b.parsed?.phone||copy.phone||''}).catch(()=>{});
+      n=copy;
     }
   }
   return n||{};
@@ -1077,10 +1086,10 @@ function renderView(bookings,cid,isTomorrow,isToday){
   html+='<div class="sum-item"><div class="sum-num" style="color:var(--warn)">'+contacted+'</div><div class="sum-label">Contactados</div></div>';
   html+='<div class="sum-item"><div class="sum-num" style="color:var(--success)">'+reminded+'</div><div class="sum-label">Enviados</div></div>';
   if(isAdmin&&totalBalance>0)html+='<div class="sum-item"><div class="sum-num sum-balance">'+totalBalance.toLocaleString('es-ES',{minimumFractionDigits:0,maximumFractionDigits:0})+'&#8364;</div><div class="sum-label">Balance</div></div>';
-  const tapasList=bookings.map(b=>parseInt(allNotes[b.id]?.food_tapas)||0).filter(v=>v>0);
-  const fishList=bookings.map(b=>parseInt(allNotes[b.id]?.food_fish)||0).filter(v=>v>0);
-  const meatList=bookings.map(b=>parseInt(allNotes[b.id]?.food_meat)||0).filter(v=>v>0);
-  const veggieList=bookings.map(b=>parseInt(allNotes[b.id]?.food_veggie)||0).filter(v=>v>0);
+  const tapasList=bookings.map(b=>{const n=allNotes[b.id];return n?.food==='no'?0:parseInt(n?.food_tapas)||0;}).filter(v=>v>0);
+  const fishList=bookings.map(b=>{const n=allNotes[b.id];return n?.food==='no'?0:parseInt(n?.food_fish)||0;}).filter(v=>v>0);
+  const meatList=bookings.map(b=>{const n=allNotes[b.id];return n?.food==='no'?0:parseInt(n?.food_meat)||0;}).filter(v=>v>0);
+  const veggieList=bookings.map(b=>{const n=allNotes[b.id];return n?.food==='no'?0:parseInt(n?.food_veggie)||0;}).filter(v=>v>0);
   const totalTapas=tapasList.reduce((s,v)=>s+v,0);
   const totalFish=fishList.reduce((s,v)=>s+v,0);
   const totalMeat=meatList.reduce((s,v)=>s+v,0);
@@ -1315,10 +1324,10 @@ function renderCard(b){
   else if(n.contacted==='reminder')pills.push('<span class="note-pill">&#128228; Reminder enviado</span>');
   else if(n.contacted==='no_responde')pills.push('<span class="note-pill">&#128244; No responde</span>');
   if(isAdmin&&n.balance)pills.push('<span class="note-pill">&#128176; <strong>'+n.balance+'&#8364;</strong></span>');
-  if(tapas>0)pills.push('<span class="note-pill">&#127860; <strong>'+tapas+'</strong> tapas</span>');
-  if(fish>0)pills.push('<span class="note-pill">&#128031; <strong>'+fish+'</strong> fish</span>');
-  if(meat>0)pills.push('<span class="note-pill">&#129385; <strong>'+meat+'</strong> meat</span>');
-  if(veggie>0)pills.push('<span class="note-pill">&#129382; <strong>'+veggie+'</strong> veggie</span>');
+  if(tapas>0&&n.food!=='no')pills.push('<span class="note-pill">&#127860; <strong>'+tapas+'</strong> tapas</span>');
+  if(fish>0&&n.food!=='no')pills.push('<span class="note-pill">&#128031; <strong>'+fish+'</strong> fish</span>');
+  if(meat>0&&n.food!=='no')pills.push('<span class="note-pill">&#129385; <strong>'+meat+'</strong> meat</span>');
+  if(veggie>0&&n.food!=='no')pills.push('<span class="note-pill">&#129382; <strong>'+veggie+'</strong> veggie</span>');
   if(n.comment)pills.push('<span class="note-pill">&#128172; '+esc(n.comment.slice(0,40))+(n.comment.length>40?'...':'')+'</span>');
   if(pills.length)html+='<div class="notes-summary" style="margin-top:8px;display:flex;flex-wrap:wrap;gap:5px;">'+pills.join('')+'</div>';
   html+='</div>';
@@ -1503,11 +1512,14 @@ function copyText(text,btn){navigator.clipboard.writeText(text).then(()=>{btn.te
 async function saveTimeOverride(sid,eventId,field,value){
   const existing=allNotes[eventId]||{};
   const col=field==='start'?'time_start':'time_end';
+  if(!allNotes[eventId])allNotes[eventId]={};
+  allNotes[eventId][col]=value;
   try{
     await upsertNote(eventId,{...existing,[col]:value});
-    if(!allNotes[eventId])allNotes[eventId]={};
-    allNotes[eventId][col]=value;
-  }catch(e){console.error('saveTimeOverride:',e);}
+  }catch(e){
+    allNotes[eventId][col]=existing[col]||null;
+    console.error('saveTimeOverride:',e);
+  }
 }
 
 async function toggleNoExport(sid,eventId){
@@ -1662,6 +1674,7 @@ async function renderPayments(){
 
       html+='<div class="top-bar"><div class="summary-bar">';
       html+='<div class="sum-item"><div class="sum-num">'+sorted.length+'</div><div class="sum-label">Charters</div></div>';
+      if(!isPaymentsOnly)html+='<div class="sum-item"><div class="sum-num sum-balance">'+totalBalance.toLocaleString('es-ES')+'&#8364;</div><div class="sum-label">Total</div></div>';
       if(bbva>0)html+='<div class="sum-item"><div class="sum-num" style="color:#1464A5">'+bbva.toLocaleString('es-ES')+'&#8364;</div><div class="sum-label">TPV BBVA</div></div>';
       if(santander>0)html+='<div class="sum-item"><div class="sum-num" style="color:#EC0000">'+santander.toLocaleString('es-ES')+'&#8364;</div><div class="sum-label">TPV Santander</div></div>';
       if(btp>0)html+='<div class="sum-item"><div class="sum-num" style="color:#f97316">'+btp.toLocaleString('es-ES')+'&#8364;</div><div class="sum-label">TPV BTP</div></div>';
@@ -2048,10 +2061,10 @@ function showExport(which){
     const balance=n.balance?n.balance+'€':'';
     const skipper=n.skipper||'--';
     const client=n.client_name||p.buyer||'';
-    const tapas=parseInt(n.food_tapas)||0;
-    const fish=parseInt(n.food_fish)||0;
-    const meat=parseInt(n.food_meat)||0;
-    const veggie=parseInt(n.food_veggie)||0;
+    const tapas=n.food==='no'?0:parseInt(n.food_tapas)||0;
+    const fish=n.food==='no'?0:parseInt(n.food_fish)||0;
+    const meat=n.food==='no'?0:parseInt(n.food_meat)||0;
+    const veggie=n.food==='no'?0:parseInt(n.food_veggie)||0;
     // Line 1: index, boat, time, pax
     text+='⛵ *'+boat+'*   🕐 '+timeStart+' – '+timeEnd+'   👥 '+pax+' pax\n';
     // Line 2: client + phone
