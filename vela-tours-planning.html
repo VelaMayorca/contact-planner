@@ -1769,7 +1769,7 @@ function renderPaymentCard(b){
     const waNum=phone?buildWa(phone):'';
     const nombre=(clientName||'').split(' ')[0]||'';
     const isEduSkipper=skipper.toLowerCase()==='edu';
-    const isGerman=/^\+4[139]/.test(phone); // +49 DE, +41 CH, +43 AT
+    const isGerman=['🇩🇪','🇨🇭','🇦🇹'].includes(getFlag(phone)); // DE, CH, AT
     let waMsgText;
     if(isGerman){
       waMsgText=isEduSkipper
